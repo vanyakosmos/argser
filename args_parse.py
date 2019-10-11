@@ -1,9 +1,13 @@
+import logging
 from argparse import ArgumentParser, ArgumentTypeError
-from typing import Any, List, Iterable
+from pprint import pformat
+from typing import Any, List, Iterable, Dict
 
 DEFAULT_HELP_FORMAT = "{type}, default: {default!r}."
 TRUE_VALUES = {'1', 'true', 't', 'okay', 'ok', 'affirmative', 'yes', 'y', 'totally'}
 FALSE_VALUES = {'0', 'false', 'f', 'no', 'n', 'nope', 'nah'}
+
+logger = logging.getLogger(__name__)
 
 
 def str2bool(v: str):
@@ -37,6 +41,14 @@ class Argument:
         self.help_text = help
         self.help_format = help_format
         self.keep_default_help = keep_default_help
+
+    def __str__(self):
+        names = {self.dest, *self.aliases}
+        names = ', '.join(names - {None})
+        return f"Argument({names}, type={self.type.__name__}, default={self.default!r})"
+
+    def __repr__(self):
+        return str(self)
 
     def names(self, prefix=None):
         names = [self.dest, *self.aliases]
@@ -80,11 +92,11 @@ class Argument:
             if self.default is False:
                 parser.add_argument(*self.names(), action='store_true', **params)
             elif self.default is True:
-                parser.add_argument(*self.names(prefix='no_'), action='store_false', **params)
+                parser.add_argument(*self.names(prefix='no-'), action='store_false', **params)
             else:
                 parser.add_argument(*self.names(), action='store_true', **params)
                 del params['help']
-                parser.add_argument(*self.names(prefix='no_'), action='store_false', **params)
+                parser.add_argument(*self.names(prefix='no-'), action='store_false', **params)
             parser.set_defaults(**{self.dest: self.default})
         else:
             params['type'] = str2bool
@@ -96,8 +108,22 @@ class Argument:
         parser.add_argument(*self.names(), **self.params)
 
 
-class Separator:
-    pass
+class Command:
+    def __init__(self, name=None, help=None, aliases=()):
+        self.name = name
+        self.aliases = aliases
+        self.help = help
+
+    def __str__(self):
+        names = {self.name, *self.aliases}
+        names = ', '.join(names - {None})
+        return f"Command({names})"
+
+    def __repr__(self):
+        return str(self)
+
+    def make_parser(self, subparser):
+        return subparser.add_parser(self.name, aliases=self.aliases, help=self.help)
 
 
 class ArgsParser:
@@ -108,18 +134,24 @@ class ArgsParser:
         help_format=DEFAULT_HELP_FORMAT,
         keep_default_help=True,
         override=False,
+        parser_kwargs=None,
+        subparser_kwargs=None,
     ):
-        self.shortcuts = shortcuts
-        self.bool_flag = bool_flag
-        self.help_format = help_format
-        self.keep_default_help = keep_default_help
-        self.override = override
-        self._parser = ArgumentParser()
         self._data = {}
-        self.args: List[Argument] = []
+        self._shortcuts = shortcuts
+        self._bool_flag = bool_flag
+        self._help_format = help_format
+        self._keep_default_help = keep_default_help
+        self._override = override
 
-        self.setup_args()
-        self.setup_parser()
+        parser_kwargs = parser_kwargs or {}
+        self._parser = ArgumentParser(**parser_kwargs)
+
+        commands, args_map = self._read_args()
+        if self._shortcuts:
+            self._make_shortcuts([arg for values in args_map.values() for arg in values])
+        subparser_kwargs = subparser_kwargs or dict(dest='command')
+        self._setup_parser(commands, args_map, subparser_kwargs)
 
     def __getattribute__(self, item):
         if item == '_data' or item not in self._data:
@@ -130,7 +162,7 @@ class ArgsParser:
         params = ", ".join(map(lambda x: f"{x[0]}={x[1]!r}", self._data.items()))
         return f"{self.__class__.__name__}({params})"
 
-    def get_nargs(self, typ, default):
+    def _get_nargs(self, typ, default):
         # just list
         if isinstance(typ, type) and issubclass(typ, list):
             nargs = '*' if len(default or []) == 0 else '+'
@@ -146,42 +178,54 @@ class ArgsParser:
         # non list type
         return typ, '?'
 
-    def setup_args(self):
+    def _read_args(self):
+        commands = []
+        args = []
+        args_map = {'base': args}
         ann = self.__class__.__annotations__
-        fields = {k: None for k in ann}
-        for key, value in self.__class__.__dict__.items():
+        fields_with_value = self.__class__.__dict__
+        fields = {k: None for k in ann if k not in fields_with_value}
+        for key, value in fields_with_value.items():
             fields[key] = value
         for key, value in fields.items():  # type: str, Any
             if key.startswith('__'):
                 continue
+            if isinstance(value, Command):
+                value.name = value.name or key
+                commands.append(value)
+                args = []
+                args_map[value.name] = args
+                continue
             if isinstance(value, Argument):
-                value.dest = key
-                if self.override:
-                    value.bool_flag = self.bool_flag
-                    value.help_format = self.help_format
-                    value.keep_default_help = self.keep_default_help
-                self.args.append(value)
+                value.dest = value.dest or key
+                if self._override:
+                    value.bool_flag = self._bool_flag
+                    value.help_format = self._help_format
+                    value.keep_default_help = self._keep_default_help
+                args.append(value)
                 continue
             typ = ann.get(key, type(value))
-            typ, nargs = self.get_nargs(typ, value)
-            self.args.append(
+            typ, nargs = self._get_nargs(typ, value)
+            args.append(
                 Argument(
                     dest=key,
                     default=value,
                     type=typ,
                     nargs=nargs,
-                    help_format=self.help_format,
-                    keep_default_help=self.keep_default_help,
-                    bool_flag=self.bool_flag,
+                    help_format=self._help_format,
+                    keep_default_help=self._keep_default_help,
+                    bool_flag=self._bool_flag,
                 )
             )
-        if self.shortcuts:
-            self.make_shortcuts()
+        return commands, args_map
 
-    def make_shortcuts(self):
-        """Add shortcuts to arguments without defined aliases."""
+    def _make_shortcuts(self, args: List[Argument]):
+        """
+        Add shortcuts to arguments without defined aliases.
+        todo: deal with duplicated names
+        """
         used = set()
-        for arg in self.args:
+        for arg in args:
             if arg.aliases != ():
                 continue
             # aaa -> a, aaa_bbb -> ab
@@ -189,24 +233,35 @@ class ArgsParser:
             if a not in used:
                 arg.aliases = (a,)
                 used.add(a)
+        return args
 
-    def setup_parser(self):
-        for arg in self.args:
+    def _setup_parser(self, commands: List[Command], args_map: Dict[str, List[Argument]], subparser_kwargs: dict):
+        _log_lines(logger.debug, pformat(commands))
+        _log_lines(logger.debug, pformat(args_map))
+        for arg in args_map['base']:
             arg.inject(self._parser)
+        if commands:
+            subparsers = self._parser.add_subparsers(**subparser_kwargs)
+            for command in commands:
+                args = args_map[command.name]
+                parser = command.make_parser(subparsers)
+                for arg in args:
+                    arg.inject(parser)
 
     def parse(self, args=None):
         namespace = self._parser.parse_args(args)
+        logger.debug(namespace)
         for key, value in namespace.__dict__.items():
             self._data[key] = value
         return self
 
-    def tabulate(self, cols=1, **kwargs):
+    def tabulate(self, **kwargs):
         from tabulate import tabulate
         kwargs.setdefault('headers', ['arg', 'value'])
         return tabulate(self._data.items(), **kwargs)
 
-    def print_table(self, cols=1, **kwargs):
-        print(self.tabulate(cols, **kwargs))
+    def print_table(self, **kwargs):
+        print(self.tabulate(**kwargs))
         return self
 
     def print(self):
@@ -214,22 +269,35 @@ class ArgsParser:
         return self
 
 
-class Args(ArgsParser):
+def _log_lines(log, text: str):
+    for line in text.splitlines():
+        log(line)
+
+
+class _Args(ArgsParser):
     undef: bool
     foo = []
     aaaa = 5
+
+    sub = Command()
     aaa_bbb = ['str']
     b: int = None
     c = 'foo'
+
+    sub2 = Command('foo')
     true = True
     false = False
-    e: str = Argument(default='fds', aliases=('e1', 'e2'), help="foo bar", keep_default_help=False)
+    e: str = Argument(dest='ee', default='fds', aliases=('e1', 'e2'), help="foo bar")
 
 
-def main():
-    args = Args(bool_flag=True, override=True).parse().print_table(tablefmt='psql')
+def _main():
+    args = _Args().parse().print_table()
     print(args)
 
 
 if __name__ == '__main__':
-    main()
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format="[%(asctime)s %(levelname)5s :%(lineno)-3d] %(message)s",
+    )
+    _main()
