@@ -19,28 +19,48 @@ def str2bool(v: str):
     raise ArgumentTypeError('Boolean value expected.')
 
 
+class Command:
+    def __init__(self, name=None, help=None, aliases=()):
+        self.name = name
+        self.aliases = aliases
+        self.help = help
+
+    def __str__(self):
+        names = {self.name, *self.aliases}
+        names = ', '.join(names - {None})
+        return f"Command({names})"
+
+    def __repr__(self):
+        return str(self)
+
+    def make_parser(self, subparser):
+        return subparser.add_parser(self.name, aliases=self.aliases, help=self.help)
+
+
 class Argument:
     def __init__(
         self,
         dest: str = None,
         default: Any = None,
-        type=str,
+        type_=None,
         aliases: Iterable[str] = (),
         nargs=None,
         help: str = None,
         help_format=DEFAULT_HELP_FORMAT,
         keep_default_help=True,
         bool_flag=True,
+        one_dash=False,
     ):
         self.dest = dest
         self.default = default
-        self.type = type
+        self.type = type_ or (str if default is None else type(default))
         self.aliases = aliases
         self.nargs = nargs
         self.bool_flag = bool_flag
         self.help_text = help
         self.help_format = help_format
         self.keep_default_help = keep_default_help
+        self.one_dash = one_dash
 
     def __str__(self):
         names = {self.dest, *self.aliases}
@@ -55,10 +75,10 @@ class Argument:
         if prefix:
             names = [f'{prefix}{n}' for n in names]
         for name in names:
-            if len(name) > 1:
-                yield f"--{name}"
-            else:
+            if len(name) == 1 or self.one_dash:
                 yield f"-{name}"
+            else:
+                yield f"--{name}"
 
     @property
     def params(self):
@@ -108,22 +128,19 @@ class Argument:
         parser.add_argument(*self.names(), **self.params)
 
 
-class Command:
-    def __init__(self, name=None, help=None, aliases=()):
-        self.name = name
-        self.aliases = aliases
-        self.help = help
+class PosArgument(Argument):
+    def __init__(self, **kwargs):
+        kwargs['bool_flag'] = False
+        super(PosArgument, self).__init__(**kwargs)
 
-    def __str__(self):
-        names = {self.name, *self.aliases}
-        names = ', '.join(names - {None})
-        return f"Command({names})"
+    @property
+    def params(self):
+        params = super().params
+        params.pop('dest')
+        return params
 
-    def __repr__(self):
-        return str(self)
-
-    def make_parser(self, subparser):
-        return subparser.add_parser(self.name, aliases=self.aliases, help=self.help)
+    def names(self, prefix=None):
+        return [self.dest]
 
 
 class ArgsParser:
@@ -133,6 +150,7 @@ class ArgsParser:
         bool_flag=True,
         help_format=DEFAULT_HELP_FORMAT,
         keep_default_help=True,
+        one_dash=False,
         override=False,
         parser_kwargs=None,
         subparser_kwargs=None,
@@ -142,10 +160,12 @@ class ArgsParser:
         self._bool_flag = bool_flag
         self._help_format = help_format
         self._keep_default_help = keep_default_help
+        self._one_dash = one_dash
         self._override = override
 
         parser_kwargs = parser_kwargs or {}
         self._parser = ArgumentParser(**parser_kwargs)
+        self._subparser = None
 
         commands, args_map = self._read_args()
         if self._shortcuts:
@@ -202,19 +222,21 @@ class ArgsParser:
                     value.bool_flag = self._bool_flag
                     value.help_format = self._help_format
                     value.keep_default_help = self._keep_default_help
+                    value.one_dash = self._one_dash
                 args.append(value)
                 continue
-            typ = ann.get(key, type(value))
+            typ = ann.get(key)
             typ, nargs = self._get_nargs(typ, value)
             args.append(
                 Argument(
                     dest=key,
                     default=value,
-                    type=typ,
+                    type_=typ,
                     nargs=nargs,
                     help_format=self._help_format,
                     keep_default_help=self._keep_default_help,
                     bool_flag=self._bool_flag,
+                    one_dash=self._one_dash,
                 )
             )
         return commands, args_map
@@ -241,10 +263,10 @@ class ArgsParser:
         for arg in args_map['base']:
             arg.inject(self._parser)
         if commands:
-            subparsers = self._parser.add_subparsers(**subparser_kwargs)
+            self._subparser = self._parser.add_subparsers(**subparser_kwargs)
             for command in commands:
                 args = args_map[command.name]
-                parser = command.make_parser(subparsers)
+                parser = command.make_parser(self._subparser)
                 for arg in args:
                     arg.inject(parser)
 
@@ -283,6 +305,8 @@ class _Args(ArgsParser):
     aaa_bbb = ['str']
     b: int = None
     c = 'foo'
+    ddd: str = PosArgument()
+    bbb: bool = PosArgument(default=True)
 
     sub2 = Command('foo')
     true = True
@@ -291,7 +315,7 @@ class _Args(ArgsParser):
 
 
 def _main():
-    args = _Args().parse().print_table()
+    args = _Args(one_dash=True).parse().print_table()
     print(args)
 
 
