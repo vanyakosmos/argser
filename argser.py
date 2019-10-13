@@ -211,7 +211,11 @@ class ArgsParser:
                 typ = type(default[0])
             return typ, nargs
         #  List or List[str] or similar
-        if not isinstance(typ, type) and hasattr(typ, '_name') and getattr(typ, '_name') == 'List':
+        if (
+            not isinstance(typ, type) and
+            (list in getattr(typ, '__orig_bases__', []) or getattr(typ, '__origin__') is list) and
+            len(getattr(typ, '__args__') or []) > 0
+        ):
             if isinstance(typ.__args__[0], type):
                 typ = typ.__args__[0]
             else:
@@ -259,7 +263,6 @@ class ArgsParser:
                 continue
             # get from annotation or from default value or fallback to str
             typ = ann.get(key, str if value is None else type(value))
-
             typ, nargs = self._get_nargs(typ, value)
             args.append(
                 Argument(

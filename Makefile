@@ -10,3 +10,6 @@ upload:
 publish-test: build upload-test
 
 publish: build upload
+
+test-cov:
+	pytest --cov=argser --no-cov-on-fail --cov-report html --cov-report term-missing
