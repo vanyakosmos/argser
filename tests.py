@@ -2,7 +2,7 @@ from typing import List
 
 import pytest
 
-from argser import ArgsParser, Argument, PosArgument, Command
+from argser import ArgsParser, Argument, PosArgument, Command, is_list_typing
 
 
 def test_make_shortcust():
@@ -252,7 +252,7 @@ def test_nested_parsers():
         sub2 = Command()
         d = 4
 
-    args = Args().parse()
+    args = Args().parse([])
     assert args.a == 1
     assert args.b == 2
     assert 'c' not in args._data
@@ -269,3 +269,11 @@ def test_nested_parsers():
     assert args.sub == 'sub2'
     assert 'c' not in args._data
     assert args.d == 5
+
+
+def test_is_list_typing():
+    assert is_list_typing(List)
+    assert is_list_typing(List[str])
+    assert is_list_typing(List[int])
+    assert not is_list_typing(list)
+    assert not is_list_typing(str)

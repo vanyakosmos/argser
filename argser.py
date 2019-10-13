@@ -3,7 +3,6 @@ import shlex
 from argparse import ArgumentParser, ArgumentTypeError
 from collections import defaultdict
 from contextlib import contextmanager
-from pprint import pformat
 from typing import Any, List, Iterable, Dict
 
 DEFAULT_HELP_FORMAT = "{type}, default: {default!r}."
@@ -20,6 +19,12 @@ def str2bool(v: str):
     elif v in FALSE_VALUES:
         return False
     raise ArgumentTypeError('Boolean value expected.')
+
+
+def is_list_typing(t):
+    logger.debug(f"is List: {t.__dict__}")
+    orig = getattr(t, '__origin__', None)
+    return list in getattr(t, '__orig_bases__', []) or orig and issubclass(list, orig)
 
 
 class Command:
@@ -202,7 +207,7 @@ class ArgsParser:
 
     def _get_nargs(self, typ, default):
         # just list
-        if isinstance(typ, type) and issubclass(typ, list):
+        if typ is list:
             if len(default or []) == 0:
                 nargs = '*'
                 typ = str
@@ -211,12 +216,10 @@ class ArgsParser:
                 typ = type(default[0])
             return typ, nargs
         #  List or List[str] or similar
-        if (
-            not isinstance(typ, type) and
-            (list in getattr(typ, '__orig_bases__', []) or getattr(typ, '__origin__') is list) and
-            len(getattr(typ, '__args__') or []) > 0
-        ):
-            if isinstance(typ.__args__[0], type):
+        if is_list_typing(typ):
+            if not typ.__args__:  # None or empty
+                typ = str
+            elif isinstance(typ.__args__[0], type):
                 typ = typ.__args__[0]
             else:
                 typ = str
@@ -261,9 +264,12 @@ class ArgsParser:
                     value.one_dash = self._one_dash
                 args.append(value)
                 continue
+            logger.debug(f"reading {key!r}")
             # get from annotation or from default value or fallback to str
             typ = ann.get(key, str if value is None else type(value))
+            logger.debug(f"typ {typ}, default: {value}")
             typ, nargs = self._get_nargs(typ, value)
+            logger.debug(f"typ {typ}, nargs {nargs!r}")
             args.append(
                 Argument(
                     dest=key,
@@ -302,8 +308,6 @@ class ArgsParser:
         self, subparsers: List['ArgsParser'], commands: List[Command], args_map: Dict[str, List[Argument]],
         subparser_kwargs: dict
     ):
-        _log_lines(logger.debug, pformat(commands))
-        _log_lines(logger.debug, pformat(args_map))
         for arg in args_map['base']:
             arg.inject(self._parser)
         if subparsers or commands:
@@ -343,8 +347,3 @@ class ArgsParser:
     def print(self):
         print(self)
         return self
-
-
-def _log_lines(log, text: str):
-    for line in text.splitlines():
-        log(line)
