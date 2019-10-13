@@ -11,28 +11,46 @@ from argser import ArgsParser
 class Args(ArgsParser):
     a = 'a'
     foo = 1
-    bar = True
+    bar: bool
 
 
-args = Args().parse()
-print(repr(args.a), args.foo, args.bar)
+args = Args().parse().print()
 ```
+
+<details>
+<summary>argparse alternative</summary>
+    
+```python
+from argparse import ArgumentParser
+
+parser = ArgumentParser()
+parser.add_argument('-a', type=str, default='a', help="str, default: 'a'")
+parser.add_argument('--foo', '-f', dest='foo', type=int, default=1, help="int, default: 1")
+parser.add_argument('--bar', '-b', dest='bar', action='store_true', help="bool, default: None")
+parser.add_argument('--no-bar', '--no-b', dest='bar', action='store_false')
+parser.set_defaults(bar=None)
+
+args = parser.parse_args()
+print(args)
+```
+</details>
 
 ```
 python playground.py -a "aaa bbb" -f 100500 --no-b
->> 'aaa bbb' 100500 False
+>> Args(bar=False, a='aaa bbb', foo=100500)
 ```
 
 ```
 ❯ python playground.py -h
-usage: playground.py [-h] [-a [A]] [--foo [FOO]] [--no-bar]
+usage: playground.py [-h] [--bar] [--no-bar] [-a [A]] [--foo [FOO]]
 
 optional arguments:
   -h, --help            show this help message and exit
+  --bar, -b             bool, default: None.
+  --no-bar, --no-b
   -a [A]                str, default: 'a'.
   --foo [FOO], -f [FOO]
                         int, default: 1.
-  --no-bar, --no-b      bool, default: True.
 ```
 
 ## complex example
