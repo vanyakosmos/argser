@@ -179,16 +179,16 @@ def test_command():
         e = None
 
     args = Args().parse('-a "foo bar" sub1')
-    assert args.command == 'sub1'
+    assert args.sub == 'sub1'
     assert args.a == 'foo bar'
 
     args = Args().parse('sub1 -b 1 -c 3')
-    assert args.command == 'sub1'
+    assert args.sub == 'sub1'
     assert args.b == 1
     assert args.c == 3.0
 
     args = Args().parse('sub2 -d -e 3')
-    assert args.command == 'sub2'
+    assert args.sub == 'sub2'
     assert args.d is True
     assert args.e == '3'
 
@@ -239,3 +239,33 @@ def test_override():
 
     with pytest.raises(SystemExit):
         Args(override=True, one_dash=False).parse('-aa foo1 --bb bar1 -cc baz1')
+
+
+def test_nested_parsers():
+    class Args(ArgsParser):
+        class Sub(ArgsParser):
+            c = 3
+
+        a = 1
+        sub = Sub(aliases=('sss',))
+        b = 2
+        sub2 = Command()
+        d = 4
+
+    args = Args().parse()
+    assert args.a == 1
+    assert args.b == 2
+    assert 'c' not in args._data
+    assert 'd' not in args._data
+
+    args = Args().parse('sss')
+    assert args.sub == 'sss'
+    args = Args().parse('sub')
+    assert args.sub == 'sub'
+    assert args.c == 3
+    assert args.d == 4
+
+    args = Args().parse('sub2 -d 5')
+    assert args.sub == 'sub2'
+    assert 'c' not in args._data
+    assert args.d == 5

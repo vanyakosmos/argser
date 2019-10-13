@@ -2,6 +2,7 @@ import logging
 import shlex
 from argparse import ArgumentParser, ArgumentTypeError
 from collections import defaultdict
+from contextlib import contextmanager
 from pprint import pformat
 from typing import Any, List, Iterable, Dict
 
@@ -35,8 +36,11 @@ class Command:
     def __repr__(self):
         return str(self)
 
+    @contextmanager
     def make_parser(self, subparser):
-        return subparser.add_parser(self.name, aliases=self.aliases, help=self.help)
+        parser = ArgumentParser()
+        yield parser
+        subparser.add_parser(self.name, parents=[parser], add_help=False, aliases=self.aliases)
 
 
 class Argument:
@@ -147,6 +151,8 @@ class PosArgument(Argument):
 class ArgsParser:
     def __init__(
         self,
+        name=None,
+        aliases=(),
         shortcuts=True,
         bool_flag=True,
         help_format=DEFAULT_HELP_FORMAT,
@@ -154,9 +160,12 @@ class ArgsParser:
         one_dash=False,
         override=False,
         parser_kwargs=None,
+        subparser='sub',
         subparser_kwargs=None,
     ):
         self._data = {}
+        self._name = name
+        self._aliases = aliases
         self._shortcuts = shortcuts
         self._bool_flag = bool_flag
         self._help_format = help_format
@@ -168,11 +177,12 @@ class ArgsParser:
         self._parser = ArgumentParser(**parser_kwargs)
         self._subparser = None
 
-        commands, self._args_map = commands, args_map = self._read_args()
+        *_, self._args_map = subparsers, commands, args_map = self._read_args()
         if self._shortcuts:
             self._make_shortcuts([arg for values in args_map.values() for arg in values])
-        subparser_kwargs = subparser_kwargs or dict(dest='command')
-        self._setup_parser(commands, args_map, subparser_kwargs)
+        subparser_kwargs = subparser_kwargs or {}
+        subparser_kwargs.setdefault('dest', subparser)
+        self._setup_parser(subparsers, commands, args_map, subparser_kwargs)
 
     def __getattribute__(self, item):
         if item == '_data' or item not in self._data:
@@ -211,18 +221,26 @@ class ArgsParser:
         # non list type
         return typ, '?'
 
-    def _read_args(self):
-        commands = []
-        args = []
-        args_map = {'base': args}
-        # ann = self.__class__.__annotations__
-        ann = getattr(self.__class__, '__annotations__', {})
+    def _get_fields(self, ann: dict):
         fields_with_value = self.__class__.__dict__
         fields = {k: None for k in ann if k not in fields_with_value}
         for key, value in fields_with_value.items():
             fields[key] = value
+        return fields
+
+    def _read_args(self):
+        subparsers = []
+        commands = []
+        args = []
+        args_map = {'base': args}
+        ann = getattr(self.__class__, '__annotations__', {})
+        fields = self._get_fields(ann)
         for key, value in fields.items():  # type: str, Any
-            if key.startswith('__'):
+            if key.startswith('__') or isinstance(value, type):
+                continue
+            if isinstance(value, ArgsParser):
+                value._name = value._name or key
+                subparsers.append(value)
                 continue
             if isinstance(value, Command):
                 value.name = value.name or key
@@ -255,7 +273,7 @@ class ArgsParser:
                     one_dash=self._one_dash,
                 )
             )
-        return commands, args_map
+        return subparsers, commands, args_map
 
     def _make_shortcuts(self, args: List[Argument]):
         """
@@ -277,16 +295,27 @@ class ArgsParser:
             arg.aliases = (a,)
         return args
 
-    def _setup_parser(self, commands: List[Command], args_map: Dict[str, List[Argument]], subparser_kwargs: dict):
+    def _setup_parser(
+        self, subparsers: List['ArgsParser'], commands: List[Command], args_map: Dict[str, List[Argument]],
+        subparser_kwargs: dict
+    ):
         _log_lines(logger.debug, pformat(commands))
         _log_lines(logger.debug, pformat(args_map))
         for arg in args_map['base']:
             arg.inject(self._parser)
-        if commands:
+        if subparsers or commands:
             self._subparser = self._parser.add_subparsers(**subparser_kwargs)
-            for command in commands:
-                args = args_map[command.name]
-                parser = command.make_parser(self._subparser)
+
+        for args_parser in subparsers:
+            self._subparser.add_parser(
+                args_parser._name,
+                parents=[args_parser._parser],
+                aliases=args_parser._aliases,
+                add_help=False,
+            )
+        for command in commands:
+            args = args_map[command.name]
+            with command.make_parser(self._subparser) as parser:
                 for arg in args:
                     arg.inject(parser)
 
