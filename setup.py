@@ -7,7 +7,7 @@ def readme():
 
 
 setup(
-    name='arse',
+    name='argser',
     version='0.0.1',
     description='argparse without boilerplate',
     long_description=readme(),
