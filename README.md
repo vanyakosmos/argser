@@ -55,9 +55,9 @@ args = Args().parse().print()
 ```
 
 ```
-❯ python args_parse.py -h
+❯ python playground.py -h
 
-usage: args_parse.py [-h] [-a] [--no-a] [-b [B]] [-c [C]] [-d D] {another} ...
+usage: playground.py [-h] [-a] [--no-a] [-b [B]] [-c [C]] [-d D] {another} ...
 
 positional arguments:
   {another}
@@ -74,9 +74,9 @@ optional arguments:
 ```
 
 ```
-❯ python args_parse.py another -h
+❯ python playground.py another -h
 
-usage: args_parse.py another [-h] [-e [E]] [-f [F]] g
+usage: playground.py another [-h] [-e [E]] [-f [F]] g
 
 positional arguments:
   g               str, default: None.
@@ -87,4 +87,6 @@ optional arguments:
   -f [F], -f [F]  int, default: None.
 ```
 
-more usage examples in [tests.py](tests.py)
+## more
+
+for more usage examples check out [tests.py](tests.py) file
