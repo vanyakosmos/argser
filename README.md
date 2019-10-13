@@ -1,4 +1,4 @@
-# ARSE
+# arse
 
 argparse without boilerplate
 
