@@ -1,5 +1,7 @@
 import logging
+import shlex
 from argparse import ArgumentParser, ArgumentTypeError
+from collections import defaultdict
 from pprint import pformat
 from typing import Any, List, Iterable, Dict
 
@@ -80,15 +82,18 @@ class Argument:
             else:
                 yield f"--{name}"
 
-    @property
-    def params(self):
-        return dict(
+    def params(self, exclude=(), **kwargs):
+        params = dict(
             dest=self.dest,
             default=self.default,
             type=self.type,
             nargs=self.nargs,
             help=self.help,
         )
+        params.update(**kwargs)
+        for key in exclude:
+            params.pop(key)
+        return params
 
     @property
     def help(self):
@@ -105,10 +110,8 @@ class Argument:
         return help_text
 
     def inject_bool(self, parser: ArgumentParser):
-        params = self.params
-        if self.bool_flag:
-            del params['type']
-            del params['nargs']
+        if self.bool_flag and self.nargs not in ('*', '+'):
+            params = self.params(exclude=('type', 'nargs'))
             if self.default is False:
                 parser.add_argument(*self.names(), action='store_true', **params)
             elif self.default is True:
@@ -119,13 +122,13 @@ class Argument:
                 parser.add_argument(*self.names(prefix='no-'), action='store_false', **params)
             parser.set_defaults(**{self.dest: self.default})
         else:
-            params['type'] = str2bool
+            params = self.params(type=str2bool)
             parser.add_argument(*self.names(), **params)
 
     def inject(self, parser: ArgumentParser):
         if self.type is bool:
             return self.inject_bool(parser)
-        parser.add_argument(*self.names(), **self.params)
+        parser.add_argument(*self.names(), **self.params())
 
 
 class PosArgument(Argument):
@@ -133,11 +136,9 @@ class PosArgument(Argument):
         kwargs['bool_flag'] = False
         super(PosArgument, self).__init__(**kwargs)
 
-    @property
-    def params(self):
-        params = super().params
-        params.pop('dest')
-        return params
+    def params(self, exclude=(), **kwargs):
+        exclude += ('dest',)
+        return super().params(exclude=exclude, **kwargs)
 
     def names(self, prefix=None):
         return [self.dest]
@@ -167,7 +168,7 @@ class ArgsParser:
         self._parser = ArgumentParser(**parser_kwargs)
         self._subparser = None
 
-        commands, args_map = self._read_args()
+        commands, self._args_map = commands, args_map = self._read_args()
         if self._shortcuts:
             self._make_shortcuts([arg for values in args_map.values() for arg in values])
         subparser_kwargs = subparser_kwargs or dict(dest='command')
@@ -182,11 +183,23 @@ class ArgsParser:
         params = ", ".join(map(lambda x: f"{x[0]}={x[1]!r}", self._data.items()))
         return f"{self.__class__.__name__}({params})"
 
+    @property
+    def args_(self) -> List[Argument]:
+        res = []
+        for args in self._args_map.values():
+            res.extend(args)
+        return res
+
     def _get_nargs(self, typ, default):
         # just list
         if isinstance(typ, type) and issubclass(typ, list):
-            nargs = '*' if len(default or []) == 0 else '+'
-            return str, nargs
+            if len(default or []) == 0:
+                nargs = '*'
+                typ = str
+            else:
+                nargs = '+'
+                typ = type(default[0])
+            return typ, nargs
         #  List or List[str] or similar
         if not isinstance(typ, type) and hasattr(typ, '_name') and getattr(typ, '_name') == 'List':
             if isinstance(typ.__args__[0], type):
@@ -202,7 +215,8 @@ class ArgsParser:
         commands = []
         args = []
         args_map = {'base': args}
-        ann = self.__class__.__annotations__
+        # ann = self.__class__.__annotations__
+        ann = getattr(self.__class__, '__annotations__', {})
         fields_with_value = self.__class__.__dict__
         fields = {k: None for k in ann if k not in fields_with_value}
         for key, value in fields_with_value.items():
@@ -225,7 +239,9 @@ class ArgsParser:
                     value.one_dash = self._one_dash
                 args.append(value)
                 continue
-            typ = ann.get(key)
+            # get from annotation or from default value or fallback to str
+            typ = ann.get(key, str if value is None else type(value))
+
             typ, nargs = self._get_nargs(typ, value)
             args.append(
                 Argument(
@@ -244,17 +260,21 @@ class ArgsParser:
     def _make_shortcuts(self, args: List[Argument]):
         """
         Add shortcuts to arguments without defined aliases.
-        todo: deal with duplicated names
         """
-        used = set()
+        used = defaultdict(int)
+        for arg in self.args_:
+            used[arg.dest] += 1
         for arg in args:
             if arg.aliases != ():
                 continue
             # aaa -> a, aaa_bbb -> ab
             a = ''.join(map(lambda e: e[0], arg.dest.split('_')))
-            if a not in used:
-                arg.aliases = (a,)
-                used.add(a)
+            if a == arg.dest:
+                continue
+            used[a] += 1
+            if used[a] > 1:
+                a = f"{a}{used[a]}"
+            arg.aliases = (a,)
         return args
 
     def _setup_parser(self, commands: List[Command], args_map: Dict[str, List[Argument]], subparser_kwargs: dict):
@@ -271,6 +291,8 @@ class ArgsParser:
                     arg.inject(parser)
 
     def parse(self, args=None):
+        if isinstance(args, str):
+            args = shlex.split(args)
         namespace = self._parser.parse_args(args)
         logger.debug(namespace)
         for key, value in namespace.__dict__.items():
@@ -294,34 +316,3 @@ class ArgsParser:
 def _log_lines(log, text: str):
     for line in text.splitlines():
         log(line)
-
-
-class _Args(ArgsParser):
-    undef: bool
-    foo = []
-    aaaa = 5
-
-    sub = Command()
-    aaa_bbb = ['str']
-    b: int = None
-    c = 'foo'
-    ddd: str = PosArgument()
-    bbb: bool = PosArgument(default=True)
-
-    sub2 = Command('foo')
-    true = True
-    false = False
-    e: str = Argument(dest='ee', default='fds', aliases=('e1', 'e2'), help="foo bar")
-
-
-def _main():
-    args = _Args(one_dash=True).parse().print_table()
-    print(args)
-
-
-if __name__ == '__main__':
-    logging.basicConfig(
-        level=logging.DEBUG,
-        format="[%(asctime)s %(levelname)5s :%(lineno)-3d] %(message)s",
-    )
-    _main()
