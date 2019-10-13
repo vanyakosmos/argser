@@ -2,7 +2,7 @@ from typing import List
 
 import pytest
 
-from args_parse import ArgsParser, Argument, PosArgument, Command
+from arse import ArgsParser, Argument, PosArgument, Command
 
 
 def test_make_shortcust():

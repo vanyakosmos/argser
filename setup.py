@@ -7,9 +7,9 @@ def readme():
 
 
 setup(
-    name='args_parse',
+    name='arse',
     version='0.0.1',
-    description='Simplified argsprase.',
+    description='argparse without boilerplate',
     long_description=readme(),
     long_description_content_type='text/markdown',
     author='Bachynin Ivan',

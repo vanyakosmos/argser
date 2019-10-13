@@ -1,7 +1,43 @@
-# args_parse
+# ARSE
+
+argparse without boilerplate
+
+
+## mini example
 
 ```python
-from args_parse import ArgsParser, Command, Argument, PosArgument
+from arse import ArgsParser
+
+class Args(ArgsParser):
+    a = 'a'
+    foo = 1
+    bar = True
+
+
+args = Args().parse()
+print(repr(args.a), args.foo, args.bar)
+```
+
+```
+python playground.py -a "aaa bbb" -f 100500 --no-b
+>> 'aaa bbb' 100500 False
+```
+
+```
+❯ python playground.py -h
+usage: playground.py [-h] [-a [A]] [--foo [FOO]] [--no-bar]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -a [A]                str, default: 'a'.
+  --foo [FOO], -f [FOO]
+                        int, default: 1.
+  --no-bar, --no-b      bool, default: True.
+```
+
+## complex example
+```python
+from arse import ArgsParser, Command, Argument, PosArgument
 
 class Args(ArgsParser):
     a: bool  # default None, will generate 2 args - --a and --no-a
@@ -50,3 +86,5 @@ optional arguments:
   -e [E], -e [E]  list, default: ['str'].
   -f [F], -f [F]  int, default: None.
 ```
+
+more usage examples in [tests.py](tests.py)
