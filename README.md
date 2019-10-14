@@ -9,15 +9,15 @@ argparse without boilerplate
 ## simple example
 
 ```python
-from argser import ArgsParser
+from argser import parse_args
 
-class Args(ArgsParser):
+class Args:
     a = 'a'
     foo = 1
     bar: bool
 
 
-args = Args().parse().print()
+args = parse_args(Args)
 ```
 
 <details>
@@ -56,80 +56,126 @@ optional arguments:
                         int, default: 1.
 ```
 
-## complex example
+## sub commands
+
 ```python
-from argser import ArgsParser, Command, Argument, PosArgument
+from argser import parse_args, sub_command
 
-class Args(ArgsParser):
-    a: bool  # default None, will generate 2 args - --a and --no-a
-    b = []  # nargs==*, List[str]
+class Args:
+    a: bool
+    b = []
     c = 5
-    d = Argument(default=3, aliases=('dd', 'ddd'), help="foo", keep_default_help=False)  # for complex arguments
-    # arguments after `Commands` will belong to separate subparser named after command
-    another = Command()
-    e = ['str']  # nargs==+
-    f: int = None
-    g: str = PosArgument()  # positional argument
+    
+    class Sub1:
+        d = 1
+        e = '2'
+    
+    sub1 = sub_command(Sub1)
+    
+    class Sub2:
+        f = 1
+        g = '2'
+    
+    sub2 = sub_command(Sub2)
 
-    class SubCommand(ArgsParser):
-        k = 1
-        l = 2
 
-    another2 = SubCommand()
+args = parse_args(Args, '-a -c 10')
+assert args.a is True
+assert args.c == 10
+assert args.sub1 is None
+assert args.sub2 is None
 
+args = parse_args(Args, '-a -c 10 sub1 -d 5')
+assert args.sub1.d == 5
+assert args.sub2 is None
 
-args = Args().parse().print()
+args = parse_args(Args, '-a -c 10 sub2 -g "foo bar"')
+assert args.sub1 is None
+assert args.sub2.g == "foo bar"
 ```
 
 ```
 ❯ python playground.py -h
-
-usage: playground.py [-h] [-a] [--no-a] [-b [B [B ...]]] [-c [C]] [-d D]
-                     {another2,another} ...
+usage: playground.py [-h] [-a] [--no-a] [-b [B [B ...]]] [-c [C]]
+                     {sub1,sub2} ...
 
 positional arguments:
-  {another2,another}
-    another
+  {sub1,sub2}
 
 optional arguments:
-  -h, --help            show this help message and exit
-  -a                    bool, default: None.
+  -h, --help      show this help message and exit
+  -a              bool, default: None.
   --no-a
-  -b [B [B ...]]        List[str], default: [].
-  -c [C]                int, default: 5.
-  -d D, --dd D, --ddd D
-                        foo
+  -b [B [B ...]]  List[str], default: [].
+  -c [C]          int, default: 5.
 ```
 
 ```
-❯ python playground.py another -h
-
-usage: playground.py another [-h] [-e [E]] [-f [F]] g
-
-positional arguments:
-  g             str, default: None.
-
-optional arguments:
-  -h, --help    show this help message and exit
-  -e E [E ...]  List[str], default: ['str'].
-  -f [F]        int, default: None.
-```
-
-```
-❯ python playground.py another2 -h
-
-usage: playground.py another2 [-h] [-k [K]] [-l [L]]
+❯ python playground.py sub1 -h
+usage: playground.py sub1 [-h] [-d [D]] [-e [E]]
 
 optional arguments:
   -h, --help  show this help message and exit
-  -k [K]      int, default: 1.
-  -l [L]      int, default: 2.
+  -d [D]      int, default: 1.
+  -e [E]      str, default: '2'.
 ```
 
 
-## more
+## more examples
 
 for more usage examples check out [tests.py](tests.py) file
+
+
+## arguments
+
+```python
+from argser import Arg, PosArg
+
+class Args:
+    # str / int / float
+    a1: str  # default is None
+    a2 = 2  # default is 2
+    a3: float = Arg(default=3.0, help="a3")  # default is 3.0, with additional help text
+
+    # bool
+    b1: bool  # default is None, to change use flags: --b1 or --no-b1
+    b2 = True  # default is True, to change to False: ./script.py --no-b2
+    b3 = False  # default is False, to change to True: ./script.py --b3
+    b4: bool = Arg(bool_flag=False)  # to change specify value: `--b4 1` or `--b4 false` or ...
+
+    # positional args
+    c1: float = PosArg()  # ./script.py 12.34
+
+    # one dash
+    d1: int = Arg(one_dash=True)  # ./script.py -d1 1
+    
+    # help
+    h1 = Arg()  # only default help message: "str, default: None."
+    h2 = Arg(help="foo bar")  # default + custom: "str, default: None. foo bar"
+    h3 = Arg(help="foo bar", keep_default_help=False)  # just custom: "foo bar"
+```
+
+## parse
+
+```
+Parse arguments from string or command line and return populated instance of `args_cls`.
+
+:param args_cls: class with defined arguments
+:param args: arguments to parse. Either string or list of strings or None (to read from sys.args)
+:param show:
+    if True - print arguments in one line
+    if 'table' - print arguments as table
+:param print_fn:
+:param make_shortcuts: make short version of arguments: --abc -> -a, --abc_def -> --ad
+:param bool_flag:
+    if True then read bool from argument flag: `--arg` is True, `--no-arg` is False,
+    otherwise check if arg value and truthy or falsy: `--arg 1` is True `--arg no` is False
+:param one_dash: use one dash for long names: `-name` instead of `--name`
+:param keep_default_help: prepend autogenerated help message to your help message
+:param help_format: default help format
+:param override: override values above on Arg's
+:param kwargs: tabulate additional kwargs
+```
 
 
 ## notes
