@@ -1,5 +1,8 @@
 # argser
 
+[![Build Status](https://github.com/vanyakosmos/argser/workflows/build/badge.svg)](https://github.com/vanyakosmos/argser/actions?workflow=build)
+[![Coverage](https://codecov.io/gh/vanyakosmos/argser/branch/master/graph/badge.svg)](https://codecov.io/gh/vanyakosmos/argser)
+
 argparse without boilerplate
 
 
