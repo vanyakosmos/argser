@@ -133,6 +133,7 @@ for more usage examples check out [tests.py](tests.py) file
 ## arguments
 
 ```python
+from typing import List
 from argser import Arg, PosArg
 
 class Args:
@@ -146,6 +147,12 @@ class Args:
     b2 = True  # default is True, to change to False: ./script.py --no-b2
     b3 = False  # default is False, to change to True: ./script.py --b3
     b4: bool = Arg(bool_flag=False)  # to change specify value: `--b4 1` or `--b4 false` or ...
+    
+    # list
+    l1 = []  # default = [], type = str, nargs = *
+    l2: List[int] = []  # default = [], type = int, nargs = *
+    l3 = [1.0]  # default = [], type = float, nargs = +
+    l4: List[int] = Arg(default=[], nargs='+')  # default = [], type = int, nargs = +
 
     # positional args
     c1: float = PosArg()  # ./script.py 12.34
