@@ -3,7 +3,7 @@ import shlex
 from argparse import ArgumentParser, ArgumentTypeError
 from collections import defaultdict
 from contextlib import contextmanager
-from typing import Any, List, Iterable, Dict
+from typing import Any, List, Iterable
 
 DEFAULT_HELP_FORMAT = "{type}, default: {default!r}."
 TRUE_VALUES = {'1', 'true', 't', 'okay', 'ok', 'affirmative', 'yes', 'y', 'totally'}
@@ -182,12 +182,12 @@ class ArgsParser:
         self._parser = ArgumentParser(**parser_kwargs)
         self._subparser = None
 
-        *_, self._args_map = subparsers, commands, args_map = self._read_args()
+        self._subparsers, self._commands, self._args_map = self._read_args()
         if self._shortcuts:
-            self._make_shortcuts([arg for values in args_map.values() for arg in values])
+            self._make_shortcuts()
         subparser_kwargs = subparser_kwargs or {}
         subparser_kwargs.setdefault('dest', subparser)
-        self._setup_parser(subparsers, commands, args_map, subparser_kwargs)
+        self._setup_parser(subparser_kwargs)
 
     def __getattribute__(self, item):
         if item == '_data' or item not in self._data:
@@ -217,9 +217,7 @@ class ArgsParser:
             return typ, nargs
         #  List or List[str] or similar
         if is_list_typing(typ):
-            if not typ.__args__:  # None or empty
-                typ = str
-            elif isinstance(typ.__args__[0], type):
+            if typ.__args__ and isinstance(typ.__args__[0], type):
                 typ = typ.__args__[0]
             else:
                 typ = str
@@ -284,14 +282,14 @@ class ArgsParser:
             )
         return subparsers, commands, args_map
 
-    def _make_shortcuts(self, args: List[Argument]):
+    def _make_shortcuts(self):
         """
         Add shortcuts to arguments without defined aliases.
         """
         used = defaultdict(int)
         for arg in self.args_:
             used[arg.dest] += 1
-        for arg in args:
+        for arg in self.args_:
             if arg.aliases != ():
                 continue
             # aaa -> a, aaa_bbb -> ab
@@ -302,26 +300,22 @@ class ArgsParser:
             if used[a] > 1:
                 a = f"{a}{used[a]}"
             arg.aliases = (a,)
-        return args
 
-    def _setup_parser(
-        self, subparsers: List['ArgsParser'], commands: List[Command], args_map: Dict[str, List[Argument]],
-        subparser_kwargs: dict
-    ):
-        for arg in args_map['base']:
+    def _setup_parser(self, subparser_kwargs: dict):
+        for arg in self._args_map['base']:
             arg.inject(self._parser)
-        if subparsers or commands:
+        if self._subparsers or self._commands:
             self._subparser = self._parser.add_subparsers(**subparser_kwargs)
 
-        for args_parser in subparsers:
+        for args_parser in self._subparsers:
             self._subparser.add_parser(
                 args_parser._name,
                 parents=[args_parser._parser],
                 aliases=args_parser._aliases,
                 add_help=False,
             )
-        for command in commands:
-            args = args_map[command.name]
+        for command in self._commands:
+            args = self._args_map[command.name]
             with command.make_parser(self._subparser) as parser:
                 for arg in args:
                     arg.inject(parser)

@@ -253,6 +253,8 @@ def test_nested_parsers():
         d = 4
 
     args = Args().parse([])
+    print(args.args_)  # just to please codecov
+    print(args._commands)
     assert args.a == 1
     assert args.b == 2
     assert 'c' not in args._data
