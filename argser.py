@@ -193,10 +193,22 @@ def stringify(args: Args):
     return f"{args.__class__.__name__}({pairs})"
 
 
+def _get_table(args: Args):
+    data = []
+    for key, value in args.__dict__.items():
+        if hasattr(value.__class__, SUB_COMMAND_MARK):
+            sub_data = _get_table(value)
+            data.extend([(f"{key}__{k}", v) for k, v in sub_data])
+        else:
+            data.append((key, value))
+    return data
+
+
 def tabulate(args: Args, **kwargs):
     from tabulate import tabulate
     kwargs.setdefault('headers', ['arg', 'value'])
-    return tabulate(args.__dict__.items(), **kwargs)
+    data = _get_table(args)
+    return tabulate(data, **kwargs)
 
 
 def print_args(args: Args, variant=None, print_fn=None, **kwargs):
