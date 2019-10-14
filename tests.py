@@ -2,7 +2,10 @@ from typing import List
 
 import pytest
 
-from argser import Arg, PosArg, _make_shortcuts, _read_args, is_list_like_type, parse_args, sub_command
+from argser import (
+    Arg, PosArg, _make_shortcuts, _read_args, is_list_like_type, parse_args, sub_command, _make_parser,
+    ColoredHelpFormatter
+)
 
 
 def test_simple():
@@ -261,6 +264,12 @@ def test_prints():
 
     args = parse_args(Args, [], show='table')
     assert args.a == '1'
+
+    args, sub_commands = _read_args(Args)
+    parser = _make_parser('root', args, sub_commands, formatter_class=ColoredHelpFormatter)
+    help = parser.format_help()
+    print(help)
+    assert help
 
 
 def test_override():

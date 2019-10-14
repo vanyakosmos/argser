@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "argser"
-version = "0.0.2"
-description = "argparse without boilerplate"
+version = "0.0.3"
+description = "Arguments parsing without boilerplate."
 authors = ["Bachynin Ivan <bachynin.i@gmail.com>"]
 license = "MIT"
 readme = "README.md"
@@ -10,13 +10,13 @@ repository = "https://github.com/vaniakosmos/argser"
 documentation = "https://github.com/vaniakosmos/argser"
 keywords = ['flags', 'argparse']
 classifiers = [
-    'Development Status :: 3 - Alpha',
+    'Development Status :: 4 - Beta',
     'Intended Audience :: Developers',
     'Topic :: Utilities',
 ]
 
 [tool.poetry.dependencies]
-python = "^3.5"
+python = "^3.6"
 tabulate = {version = "^0.8.5", optional = true}
 
 [tool.poetry.dev-dependencies]
