@@ -1,11 +1,11 @@
 from argparse import Action
-from typing import List, Callable
+from typing import Callable, List
 
 import pytest
 
 from argser import (
-    Arg, PosArg, _make_shortcuts, _read_args, is_list_like_type, parse_args, sub_command, _make_parser,
-    ColoredHelpFormatter
+    Arg, ColoredHelpFormatter, PosArg, _make_parser, _make_shortcuts, _read_args, is_list_like_type, make_table,
+    parse_args, sub_command
 )
 
 
@@ -99,10 +99,10 @@ def test_make_shortcuts():
 
     _make_shortcuts([a, aa, bc, ab_cd, ab_cde, bcd])
     assert a.dest == 'a' and a.aliases == ()  # already short name
-    assert aa.dest == 'aa' and aa.aliases == ('a2',)  # name 'a' already exists
+    assert aa.dest == 'aa' and aa.aliases == ()  # name 'a' already exists
     assert bc.dest == 'bc' and bc.aliases == ('b',)
     assert ab_cd.dest == 'ab_cd' and ab_cd.aliases == ('ac',)
-    assert ab_cde.dest == 'ab_cde' and ab_cde.aliases == ('ac2',)
+    assert ab_cde.dest == 'ab_cde' and ab_cde.aliases == ()
     assert bcd.dest == 'bcd' and bcd.aliases == ('foo',)  # alias was already defined and override is false
 
 
@@ -280,6 +280,41 @@ def test_prints():
     assert help
 
 
+def test_wide_table():
+    class Args:
+        a1 = 1
+        a2 = 1
+        a3 = 1
+        a4 = 1
+        a5 = 1
+        a6 = 1
+        a8 = 1
+        a7 = 1
+
+        class Sub:
+            a1 = 1
+            a2 = 1
+            a3 = 1
+            a4 = 1
+            a5 = 1
+            a6 = 1
+            a7 = 1
+            a8 = 1
+            a9 = 1
+
+            class Sub2:
+                b1 = 2
+                b2 = 2
+
+            sub2 = sub_command(Sub2)
+
+        sub = sub_command(Sub)
+
+    args = parse_args(Args, 'sub sub2')
+    table = make_table(args, preset='fancy')
+    assert len(table.splitlines()[0]) > 40
+
+
 def test_non_standard_type():
     class Args:
         integers: List[int] = PosArg(nargs='+')
@@ -294,7 +329,7 @@ def test_non_standard_type():
 
 def test_custom_type():
     class A:
-        def __init__(self, v: str):
+        def __init__(self, v):
             self.v = v
 
         def __str__(self):
@@ -307,13 +342,13 @@ def test_custom_type():
         a: A
         aa: List[A] = []
 
-    args = parse_args(Args, '')
-    assert args.a is None
-    assert args.aa == []
-
     args = parse_args(Args, '-a 1 --aa 2 3')
     assert args.a == A('1')
     assert args.aa == [A('2'), A('3')]
+
+    args = parse_args(Args, '')
+    assert args.a is None
+    assert args.aa == []
 
 
 def test_override():

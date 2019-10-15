@@ -1,6 +1,8 @@
 import logging
+import math
+import re
 import shlex
-from argparse import ArgumentParser, ArgumentTypeError, Namespace, HelpFormatter
+from argparse import ArgumentParser, ArgumentTypeError, HelpFormatter, Namespace
 from collections import defaultdict
 from typing import Any, Iterable, List, Type, TypeVar
 
@@ -65,6 +67,7 @@ class ColoredHelpFormatter(HelpFormatter):
         return super().add_usage(usage, actions, groups, prefix)
 
     def _format_action_invocation(self, action):
+        # noinspection PyProtectedMember
         header = super()._format_action_invocation(action)
         return _green(header)
 
@@ -234,16 +237,78 @@ def _get_table(args: Args):
     return data
 
 
-def tabulate(args: Args, **kwargs):
+def _merge_str_cols(columns: List[str], gap='   '):
+    parts = [c.splitlines() for c in columns]
+    res = []
+    for i in range(max(map(len, parts))):
+        row = ''
+        for j, part in enumerate(parts):
+            if i < len(part):
+                row += part[i]
+            else:
+                row += ' ' * len(part[0])
+            if j != len(parts) - 1:
+                row += gap
+
+        res.append(row)
+    return '\n'.join(res)
+
+
+def _get_cols_value(data, cols) -> int:
+    if cols == 'auto':
+        return math.ceil(len(data) / 9)
+    if isinstance(cols, str):
+        return int(cols)
+    if not cols:
+        return 1
+    return cols
+
+
+def _split_by_cols(data: list, cols):
+    cols = _get_cols_value(data, cols)
+    parts = []
+    part_size = math.ceil(len(data) / cols)
+    while data:
+        parts.append(data[:part_size])
+        data = data[part_size:]
+    return parts
+
+
+def _split_by_sub(data: list, cols=1):
+    store = defaultdict(list)
+    for key, value in data:
+        m = re.match(r'^(.+)__.+', key)
+        store[m and m[1]].append((key, value))
+    res = []
+    for sub in store.values():
+        res.extend(_split_by_cols(sub, cols))
+    return res
+
+
+def make_table(args: Args, preset=None, cols='sub-auto', gap='   ', **kwargs):
     from tabulate import tabulate
     kwargs.setdefault('headers', ['arg', 'value'])
     data = _get_table(args)
-    return tabulate(data, **kwargs)
+
+    if preset == 'fancy':
+        cols = 'sub-auto'
+        gap = ' ~ '
+        kwargs['tablefmt'] = 'fancy_grid'
+
+    if isinstance(cols, str) and cols.startswith('sub'):
+        m = re.match(r'sub-(.+)', cols)
+        c = m and m[1] or 1
+        parts = _split_by_sub(data, cols=c)
+        parts = [tabulate(sub, **kwargs) for sub in parts]
+        return _merge_str_cols(parts, gap)
+    parts = _split_by_cols(data, cols)
+    parts = [tabulate(sub, **kwargs) for sub in parts]
+    return _merge_str_cols(parts, gap)
 
 
 def print_args(args: Args, variant=None, print_fn=None, **kwargs):
     if variant == 'table':
-        s = tabulate(args, **kwargs)
+        s = make_table(args, **kwargs)
     elif variant:
         s = stringify(args)
     else:
@@ -398,6 +463,7 @@ def _get_all_args(args: List[Arg], sub_commands: dict) -> List[Arg]:
 def _make_shortcuts(args: List[Arg]):
     """
     Add shortcuts to arguments without defined aliases.
+    todo: deal with duplicated names
     """
     used = defaultdict(int)
     for arg in args:
@@ -411,7 +477,7 @@ def _make_shortcuts(args: List[Arg]):
             continue
         used[a] += 1
         if used[a] > 1:
-            a = f"{a}{used[a]}"
+            continue
         arg.aliases = (a,)
 
 
@@ -462,7 +528,10 @@ def parse_args(
     :param help_color: add colors to the help message
     :param override: override values above on Arg's
     :param parser_kwargs: root parser kwargs
-    :param tabulate_kwargs: tabulate additional kwargs
+    :param tabulate_kwargs: tabulate additional kwargs + some custom fields:
+        - cols: number of columns. Can be 'auto' - len(args)/N, int - just number of columns,
+            'sub' / 'sub-auto' / 'sub-INT' - split by sub-commands,
+        - gap: string, space between tables/columns
     """
     if isinstance(args, str):
         args_to_parse = shlex.split(args)

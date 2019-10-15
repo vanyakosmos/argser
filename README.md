@@ -10,6 +10,14 @@ Arguments parsing without boilerplate.
 
 ------
 
+## install
+
+```
+pip install argser
+pip install argser tabulate  # for fancy table support
+```
+
+
 ## simple example
 
 ```python
@@ -179,7 +187,12 @@ Display params:
     - if True - print arguments in one line
     - if 'table' - print arguments as table
  - `print_fn`:
- - `tabulate_kwargs`: additional kwargs for `tabulate`
+ - `tabulate_kwargs`: additional kwargs for `tabulate` + some custom fields:
+    - cols: number of columns: 
+        - 'auto' - len(args)/N
+        - int - just number of columns
+        - 'sub' / 'sub-auto' (default) / 'sub-INT' - split by sub-commands
+    - gap: string, space between tables/columns
 
 Extra params for all arguments:
  - `make_shortcuts`: make short version of arguments: `--abc -> -a`, `--abc_def -> --ad`
