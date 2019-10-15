@@ -311,6 +311,27 @@ def test_wide_table():
         sub = sub_command(Sub)
 
     args = parse_args(Args, 'sub sub2')
+    table = make_table(args, cols=None)
+    assert len(table.splitlines()[0]) < 40
+
+    table = make_table(args, cols='auto')
+    assert len(table.splitlines()[0]) > 40
+
+    table = make_table(args, cols=1)
+    assert len(table.splitlines()[0]) < 40
+
+    table = make_table(args, cols=3)
+    assert len(table.splitlines()[0]) > 40
+
+    table = make_table(args, cols='sub')
+    assert len(table.splitlines()[0]) > 40
+
+    table = make_table(args, cols='sub-auto')
+    assert len(table.splitlines()[0]) > 40
+
+    table = make_table(args, cols='sub-3')
+    assert len(table.splitlines()[0]) > 40
+
     table = make_table(args, preset='fancy')
     assert len(table.splitlines()[0]) > 40
 
