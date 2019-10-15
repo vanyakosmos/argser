@@ -1,12 +1,13 @@
 import logging
 import shlex
-from argparse import Namespace, ArgumentParser, HelpFormatter
+from argparse import ArgumentParser, HelpFormatter, Namespace
 from collections import defaultdict
-from typing import Type, List
+from typing import Any, List, Type
 
-from argser.consts import Args, DEFAULT_HELP_FORMAT, SUB_COMMAND_MARK, SUB_COMMAND_DEST_FMT
+from argser.consts import Args, DEFAULT_HELP_FORMAT, SUB_COMMAND_DEST_FMT, SUB_COMMAND_MARK
 from argser.display import print_args, stringify
 from argser.fields import Arg
+from argser.logging import VERBOSE
 from argser.utils import ColoredHelpFormatter, is_list_like_type
 
 logger = logging.getLogger(__name__)
@@ -48,12 +49,9 @@ def _get_fields(args_cls: Type[Args], ann: dict):
 def _get_type_and_nargs(ann: dict, field_name: str, default):
     # get type from annotation or from default value or fallback to str
     typ = ann.get(field_name, str if default is None else type(default))
-    logger.debug(f"init type {typ}, default: {default}")
+    logger.log(VERBOSE, f"init type {typ}, default: {default}")
     typ, nargs = _get_nargs(typ, default)
-    # allow to auto-read only basic types
-    # if typ not in (str, int, float, bool):
-    #     typ = None
-    logger.debug(f"type {typ}, nargs {nargs!r}")
+    logger.log(VERBOSE, f"type {typ}, nargs {nargs!r}")
     return typ, nargs
 
 
@@ -70,7 +68,7 @@ def _read_args(
     ann = getattr(args_cls, '__annotations__', {})
     fields = _get_fields(args_cls, ann)
     for key, value in fields.items():  # type: str, Any
-        logger.debug(f"reading {key!r}")
+        logger.log(VERBOSE, f"reading {key!r}")
         if hasattr(value, SUB_COMMAND_MARK):
             sub_commands[key] = _read_args(
                 value.__class__,
@@ -91,7 +89,7 @@ def _read_args(
                 value.one_dash = one_dash
                 value.keep_default_help = keep_default_help
                 value.help_format = help_format
-            logger.debug(value.__dict__)
+            logger.log(VERBOSE, value.__dict__)
             args.append(value)
             continue
         typ, nargs = _get_type_and_nargs(ann, key, value)
@@ -112,7 +110,7 @@ def _read_args(
 
 
 def _make_parser(name: str, args: List[Arg], sub_commands: dict, formatter_class=HelpFormatter, **kwargs):
-    logger.debug(f"parser {name}:\n - {args}\n - {sub_commands}")
+    logger.log(VERBOSE, f"parser {name}:\n - {args}\n - {sub_commands}")
     parser = ArgumentParser(formatter_class=formatter_class, **kwargs)
     for arg in args:
         arg.inject(parser)
@@ -132,7 +130,7 @@ def _make_parser(name: str, args: List[Arg], sub_commands: dict, formatter_class
 
 
 def _set_values(parser_name: str, res: Args, namespace: Namespace, args: List[Arg], sub_commands: dict):
-    logger.debug(f'setting values for: {res}')
+    logger.log(VERBOSE, f'setting values for: {res}')
     for arg in args:
         setattr(res, arg.dest, namespace.__dict__.get(arg.dest))
     for name, (args_cls, args, sub_c) in sub_commands.items():
@@ -144,7 +142,7 @@ def _set_values(parser_name: str, res: Args, namespace: Namespace, args: List[Ar
         # otherwise nullify sub-command
         else:
             setattr(res, name, None)
-    logger.debug(f'setting complete: {res}')
+    logger.log(VERBOSE, f'setting complete: {res}')
 
 
 def _get_all_args(args: List[Arg], sub_commands: dict) -> List[Arg]:
@@ -249,7 +247,7 @@ def parse_args(
     parser = _make_parser('root', args, sub_commands, **parser_kwargs)
 
     namespace = parser.parse_args(args_to_parse)
-    logger.debug(namespace)
+    logger.log(VERBOSE, namespace)
 
     result = sub_command(args_cls)
     _set_values('root', result, namespace, args, sub_commands)
