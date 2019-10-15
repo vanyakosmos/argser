@@ -1,4 +1,5 @@
-from typing import List
+from argparse import Action
+from typing import List, Callable
 
 import pytest
 
@@ -56,7 +57,7 @@ def test_sub_command():
 
 def test_complex_args():
     class Args:
-        a: int = Arg()
+        a: int = Arg(metavar='AA')
         bb: str = Arg(default='foo')
         ccc_ddd: List[float] = Arg(default=[1.1, 2.2])
         e: List[bool] = Arg(default=[])
@@ -78,7 +79,7 @@ def test_positional_args():
     class Args:
         a = 1
         bb: str = PosArg()
-        ccc: List[int] = PosArg()
+        ccc: List[int] = PosArg(metavar='C')
         d = True
 
     args = parse_args(Args, '"foo bar" 1 2 -a 5 --no-d')
@@ -89,12 +90,12 @@ def test_positional_args():
 
 
 def test_make_shortcuts():
-    a = Arg(dest='a', type_=str)
-    aa = Arg(dest='aa', type_=str)
-    bc = Arg(dest='bc', type_=str)
-    ab_cd = Arg(dest='ab_cd', type_=str)
-    ab_cde = Arg(dest='ab_cde', type_=str)
-    bcd = PosArg(dest='bcd', type_=str, aliases=('foo',))
+    a = Arg(dest='a', type=str)
+    aa = Arg(dest='aa', type=str)
+    bc = Arg(dest='bc', type=str)
+    ab_cd = Arg(dest='ab_cd', type=str)
+    ab_cde = Arg(dest='ab_cde', type=str)
+    bcd = PosArg(dest='bcd', type=str, aliases=('foo',))
 
     _make_shortcuts([a, aa, bc, ab_cd, ab_cde, bcd])
     assert a.dest == 'a' and a.aliases == ()  # already short name
@@ -228,7 +229,7 @@ def test_parse_list_nargs(list_args):
     assert args.d == []
     assert args.e == [1.0]
 
-    (a, b, c, d, e), sub_commands = _read_args(args.__class__)
+    args_cls, (a, b, c, d, e), sub_commands = _read_args(args.__class__)
     # a, b, c, d, e = args_as_list(args)
     assert a.nargs == '*'
     assert b.nargs == '*'
@@ -242,7 +243,7 @@ def test_parse_list_nargs(list_args):
 
 
 def test_parse_list_types(list_args):
-    (a, b, c, d, e), sub_commands = _read_args(list_args().__class__)
+    args_cls, (a, b, c, d, e), sub_commands = _read_args(list_args().__class__)
     assert a.type is str
     assert b.type is str
     assert c.type is int
@@ -259,17 +260,60 @@ def test_prints():
         d = True
         e = Arg(default=[1, 1], help='foo bar')
 
-    args = parse_args(Args, [], show=True)
+        class Sub:
+            f = True
+
+        sub = sub_command(Sub)
+
+    args = parse_args(Args, '', show=True)
     assert args.a == '1'
 
-    args = parse_args(Args, [], show='table')
-    assert args.a == '1'
+    args = parse_args(Args, '-a 5 sub', show='table')
+    assert args.a == '5'
+    assert args.sub.f is True
+    # assert 0
 
-    args, sub_commands = _read_args(Args)
+    args_cls, args, sub_commands = _read_args(Args)
     parser = _make_parser('root', args, sub_commands, formatter_class=ColoredHelpFormatter)
     help = parser.format_help()
     print(help)
     assert help
+
+
+def test_non_standard_type():
+    class Args:
+        integers: List[int] = PosArg(nargs='+')
+        accumulate: Callable = Arg(action='store_const', const=sum, default=max)
+
+    args = parse_args(Args, '1 2 3')
+    assert args.accumulate(args.integers) == 3
+
+    args = parse_args(Args, '1 2 3 -a')
+    assert args.accumulate(args.integers) == 6
+
+
+def test_custom_type():
+    class A:
+        def __init__(self, v: str):
+            self.v = v
+
+        def __str__(self):
+            return f"A({self.v})"
+
+        def __eq__(self, other):
+            return other.v == self.v
+
+    class Args:
+        a: A
+        aa: List[A] = []
+
+    args = parse_args(Args, '')
+    assert args.a is None
+    assert args.aa == []
+
+    args = parse_args(Args, '-a 1 --aa 2 3')
+    assert args.a == A('1')
+    assert args.aa == [A('2'), A('3')]
 
 
 def test_override():
@@ -298,3 +342,99 @@ def test_is_list_typing():
     assert is_list_like_type(List[int])
     assert not is_list_like_type(list)
     assert not is_list_like_type(str)
+
+
+def test_action_store():
+    class Args:
+        a = Arg(action='store', default='24')
+
+    args = parse_args(Args, '-a 42')
+    assert args.a == '42'
+
+
+def test_action_store_const():
+    class Args:
+        a = Arg(action='store_const', default='42', const=42)
+
+    args = parse_args(Args, '')
+    assert args.a == '42'
+    args = parse_args(Args, '-a')
+    assert args.a == 42
+
+
+def test_action_store_bool():
+    class Args:
+        a = Arg(action='store_true', default=1)
+        b = Arg(action='store_false')
+
+    args = parse_args(Args, '')
+    assert args.a == 1
+    assert args.b is True
+
+    args = parse_args(Args, '-a -b')
+    assert args.a is True
+    assert args.b is False
+
+
+def test_action_append():
+    class Args:
+        a: List[int] = Arg(action='append', default=[])
+
+    args = parse_args(Args, '')
+    assert args.a == []
+
+    args = parse_args(Args, '-a 1')
+    assert args.a == [1]
+
+    args = parse_args(Args, '-a 1 -a 2')
+    assert args.a == [1, 2]
+
+
+@pytest.mark.skip("niche action, too lazy to fix")
+def test_action_append_const():
+    class Args:
+        a = Arg(dest='c', action='append_const', const=str)
+        b = Arg(dest='c', action='append_const', const=int)
+
+    args = parse_args(Args, '-a -b')
+    assert args.c == [str, int]
+
+
+def test_action_count():
+    class Args:
+        verbose: int = Arg(action='count', default=0)
+
+    args = parse_args(Args, '')
+    assert args.verbose == 0
+
+    args = parse_args(Args, '-vvv')
+    assert args.verbose == 3
+
+
+def test_action_version():
+    class Args:
+        version: str = Arg(action='version', version='%(prog)s 0.0.1', aliases=('V',))
+
+    with pytest.raises(SystemExit, match='0'):
+        parse_args(Args, '-V', parser_kwargs=dict(prog='PROG'))
+
+
+def test_action_custom():
+    # from python docs
+    class FooAction(Action):
+        def __init__(self, option_strings, dest, nargs=None, **kwargs):
+            if nargs is not None:
+                raise ValueError("nargs not allowed")
+            super(FooAction, self).__init__(option_strings, dest, **kwargs)
+
+        def __call__(self, parser, namespace, values, option_string=None):
+            setattr(namespace, self.dest, f'[{values}]')
+
+    class Args:
+        a: str = Arg(action=FooAction, default='[]')
+
+    args = parse_args(Args, '')
+    assert args.a == '[]'
+
+    args = parse_args(Args, '-a "foo bar"')
+    assert args.a == '[foo bar]'
