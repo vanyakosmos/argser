@@ -3,10 +3,10 @@ from typing import Callable, List
 
 import pytest
 
-from argser import (
-    Arg, ColoredHelpFormatter, PosArg, _make_parser, _make_shortcuts, _read_args, is_list_like_type, make_table,
-    parse_args, sub_command
-)
+from argser import Arg, PosArg, make_table, parse_args, sub_command
+# noinspection PyProtectedMember
+from argser.parser import _make_parser, _make_shortcuts, _read_args
+from argser.utils import ColoredHelpFormatter, is_list_like_type
 
 
 def test_simple():
