@@ -259,6 +259,7 @@ def test_prints():
         c = 1.0
         d = True
         e = Arg(default=[1, 1], help='foo bar')
+        just_long_long_argument = 'foo bar baz'
 
         class Sub:
             f = True
@@ -271,7 +272,6 @@ def test_prints():
     args = parse_args(Args, '-a 5 sub', show='table')
     assert args.a == '5'
     assert args.sub.f is True
-    # assert 0
 
     args_cls, args, sub_commands = _read_args(Args)
     parser = _make_parser('root', args, sub_commands, formatter_class=ColoredHelpFormatter)

@@ -53,7 +53,18 @@ class ColoredHelpFormatter(HelpFormatter):
             prefix = _yellow('usage') + ': '
         return super().add_usage(usage, actions, groups, prefix)
 
-    def _format_action_invocation(self, action):
+    def _format_action(self, action):
         # noinspection PyProtectedMember
-        header = super()._format_action_invocation(action)
-        return _green(header)
+        text = super()._format_action(action)
+        lines = text.splitlines()
+        if len(lines) > 1:
+            lines[0] = _green(lines[0])
+            text = '\n'.join(lines)
+            return f"{text}\n"
+        elif len(lines) == 1:
+            line = lines[0]
+            invoc = line[:self._max_help_position]
+            invoc = _green(invoc)
+            help_text = line[self._max_help_position:]
+            return f"{invoc}{help_text}\n"
+        return text  # pragma: no cover
