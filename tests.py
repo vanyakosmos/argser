@@ -5,7 +5,7 @@ import pytest
 
 from argser import Arg, PosArg, make_table, parse_args, sub_command
 # noinspection PyProtectedMember
-from argser.parser import _make_parser, _make_shortcuts, _read_args
+from argser.parser import _make_parser, _make_shortcuts_sub_wise, _read_args
 from argser.utils import ColoredHelpFormatter, is_list_like_type
 
 
@@ -96,14 +96,19 @@ def test_make_shortcuts():
     ab_cd = Arg(dest='ab_cd', type=str)
     ab_cde = Arg(dest='ab_cde', type=str)
     bcd = PosArg(dest='bcd', type=str, aliases=('foo',))
+    # sub
+    aaa = Arg(dest='aaa', type=str)
+    ab_cd2 = Arg(dest='ab_cd', type=str)
 
-    _make_shortcuts([a, aa, bc, ab_cd, ab_cde, bcd])
+    _make_shortcuts_sub_wise([a, aa, bc, ab_cd, ab_cde, bcd], {'sub': (None, [aaa, ab_cd2], {})})
     assert a.dest == 'a' and a.aliases == ()  # already short name
     assert aa.dest == 'aa' and aa.aliases == ()  # name 'a' already exists
     assert bc.dest == 'bc' and bc.aliases == ('b',)
     assert ab_cd.dest == 'ab_cd' and ab_cd.aliases == ('ac',)
     assert ab_cde.dest == 'ab_cde' and ab_cde.aliases == ()
     assert bcd.dest == 'bcd' and bcd.aliases == ('foo',)  # alias was already defined and override is false
+    assert aaa.dest == 'aaa' and aaa.aliases == ('a',)
+    assert ab_cd2.dest == 'ab_cd' and ab_cd2.aliases == ('ac',)
 
 
 def test_parse_str():

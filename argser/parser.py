@@ -145,13 +145,6 @@ def _set_values(parser_name: str, res: Args, namespace: Namespace, args: List[Ar
     logger.log(VERBOSE, f'setting complete: {res}')
 
 
-def _get_all_args(args: List[Arg], sub_commands: dict) -> List[Arg]:
-    res = args.copy()
-    for name, (args_cls, args, sub_c) in sub_commands.items():
-        res.extend(_get_all_args(args, sub_c))
-    return res
-
-
 def _make_shortcuts(args: List[Arg]):
     """
     Add shortcuts to arguments without defined aliases.
@@ -171,6 +164,12 @@ def _make_shortcuts(args: List[Arg]):
         if used[a] > 1:
             continue
         arg.aliases = (a,)
+
+
+def _make_shortcuts_sub_wise(args: List[Arg], sub_commands: dict):
+    _make_shortcuts(args)
+    for name, (args_cls, args, sub_p) in sub_commands.items():
+        _make_shortcuts_sub_wise(args, sub_p)
 
 
 def sub_command(args_cls: Type[Args], **kwargs) -> Args:
@@ -239,8 +238,7 @@ def parse_args(
         one_dash=one_dash,
     )
     if make_shortcuts:
-        all_args = _get_all_args(args, sub_commands)
-        _make_shortcuts(all_args)
+        _make_shortcuts_sub_wise(args, sub_commands)
     parser_kwargs = parser_kwargs or {}
     if help_color:
         parser_kwargs['formatter_class'] = ColoredHelpFormatter
