@@ -108,14 +108,10 @@ class Arg:
     def inject_bool(self, parser: ArgumentParser):
         if self.bool_flag and self.nargs not in ('*', '+'):
             params = self.params(exclude=('type', 'nargs', 'metavar', 'action'))
-            if self.default is False:
-                parser.add_argument(*self.names(), action='store_true', **params)
-            elif self.default is True:
-                parser.add_argument(*self.names(prefix='no-'), action='store_false', **params)
-            else:
-                parser.add_argument(*self.names(), action='store_true', **params)
+            parser.add_argument(*self.names(), action='store_true', **params)
+            if 'help' in params:
                 del params['help']
-                parser.add_argument(*self.names(prefix='no-'), action='store_false', **params)
+            parser.add_argument(*self.names(prefix='no-'), action='store_false', **params)
             parser.set_defaults(**{self.dest: self.default})
         else:
             params = self.params(type=str2bool)
