@@ -63,8 +63,9 @@ class ColoredHelpFormatter(HelpFormatter):
             return f"{text}\n"
         elif len(lines) == 1:
             line = lines[0]
-            invoc = line[:self._max_help_position]
+            w = min(self._action_max_length, self._max_help_position)
+            invoc = line[:w]
             invoc = _green(invoc)
-            help_text = line[self._max_help_position:]
+            help_text = line[w:]
             return f"{invoc}{help_text}\n"
         return text  # pragma: no cover
