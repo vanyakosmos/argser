@@ -1,4 +1,5 @@
 import logging
+import re
 import shlex
 from argparse import ArgumentParser, HelpFormatter, Namespace
 from collections import defaultdict
@@ -174,7 +175,7 @@ def _make_shortcuts_sub_wise(args: List[Arg], sub_commands: dict):
 
 def sub_command(args_cls: Type[Args], **kwargs) -> Args:
     """
-    :param args_cls:
+    :param args_cls: data holder
     :param kwargs: additional parser kwargs
     :return:
     """
@@ -183,6 +184,13 @@ def sub_command(args_cls: Type[Args], **kwargs) -> Args:
     setattr(args_cls, '__kwargs', kwargs)
     setattr(args_cls, SUB_COMMAND_MARK, True)
     return args_cls()
+
+
+def _add_prefixed_key(source: dict, target: dict, prefix: str):
+    for key, value in source.items():
+        m = re.match(f'{prefix}(.+)', key)
+        if m:
+            target[m[1]] = value
 
 
 def parse_args(
@@ -199,6 +207,7 @@ def parse_args(
     override=False,
     parser_kwargs=None,
     tabulate_kwargs=None,
+    **kwargs,
 ) -> Args:
     """
     Parse arguments from string or command line and return populated instance of `args_cls`.
@@ -220,10 +229,16 @@ def parse_args(
     :param override: override values above on Arg's
     :param parser_kwargs: root parser kwargs
     :param tabulate_kwargs: tabulate additional kwargs + some custom fields:
-        - cols: number of columns. Can be 'auto' - len(args)/N, int - just number of columns,
-            'sub' / 'sub-auto' / 'sub-INT' - split by sub-commands,
-        - gap: string, space between tables/columns
+        cols: number of columns. Can be 'auto' - len(args)/N, int - just number of columns,
+        'sub' / 'sub-auto' / 'sub-INT' - split by sub-commands,
+        gap: string, space between tables/columns
+    :param kwargs: params for tabulate and parser - tabulate_ARG=VAL or parser_ARG=VAL
     """
+    tabulate_kwargs = tabulate_kwargs or {}
+    _add_prefixed_key(kwargs, tabulate_kwargs, 'tabulate_')
+    parser_kwargs = parser_kwargs or {}
+    _add_prefixed_key(kwargs, parser_kwargs, 'parser_')
+
     if isinstance(args, str):
         args_to_parse = shlex.split(args)
     else:
@@ -239,7 +254,6 @@ def parse_args(
     )
     if make_shortcuts:
         _make_shortcuts_sub_wise(args, sub_commands)
-    parser_kwargs = parser_kwargs or {}
     if help_color:
         parser_kwargs['formatter_class'] = ColoredHelpFormatter
     parser = _make_parser('root', args, sub_commands, **parser_kwargs)

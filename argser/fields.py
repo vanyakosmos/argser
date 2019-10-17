@@ -63,6 +63,16 @@ class Arg:
         return str(self)
 
     @property
+    def help(self):
+        help_text = self.help_text
+        if self.keep_default_help:
+            typ = getattr(self.type, '__name__', '-')
+            if self.nargs in ('*', '+'):
+                typ = f"List[{typ}]"
+            help_text = self.help_format.format(type=typ, default=self.default, message=self.help_text or '')
+        return help_text
+
+    @property
     def metavar(self):
         if self._metavar:
             return self._metavar
@@ -94,16 +104,6 @@ class Arg:
         for key in exclude:
             params.pop(key)
         return {k: v for k, v in params.items() if v is not None}
-
-    @property
-    def help(self):
-        help_text = self.help_text
-        if self.keep_default_help:
-            typ = getattr(self.type, '__name__', '-')
-            if self.nargs in ('*', '+'):
-                typ = f"List[{typ}]"
-            help_text = self.help_format.format(type=typ, default=self.default, message=self.help_text or '')
-        return help_text
 
     def inject_bool(self, parser: ArgumentParser):
         if self.bool_flag and self.nargs not in ('*', '+'):

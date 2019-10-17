@@ -274,7 +274,7 @@ def test_prints():
     args = parse_args(Args, '', show=True)
     assert args.a == '1'
 
-    args = parse_args(Args, '-a 5 sub', show='table')
+    args = parse_args(Args, '-a 5 sub', show='table', tabulate_preset='fancy')
     assert args.a == '5'
     assert args.sub.f is True
 
