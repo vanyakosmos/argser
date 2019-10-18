@@ -283,20 +283,20 @@ def test_wide_table():
     class Args:
         a1 = 1
         a2 = 1
-        a3 = 1
+        a3 = '1'
         a4 = 1
-        a5 = 1
-        a6 = 1
+        a5 = [1, 2]
+        a6 = '1111111'
         a8 = 1
         a7 = 1
 
         class Sub:
             a1 = 1
             a2 = 1
-            a3 = 1
+            a3 = '1'
             a4 = 1
-            a5 = 1
-            a6 = 1
+            a5 = [1, 2]
+            a6 = '1111111'
             a7 = 1
             a8 = 1
             a9 = 1
@@ -321,6 +321,19 @@ def test_wide_table():
 
     table = make_table(args, cols=3)
     assert len(table.splitlines()[0]) > 40
+
+    # be careful with trailing spaces after sub__a5 [1, 2]
+    result = """
+arg    value     arg      value     arg              value
+-----  -------   -------  -------   -------------  -------
+a1     1         a7       1         sub__a7              1
+a2     1         sub__a1  1         sub__a8              1
+a3     1         sub__a2  1         sub__a9              1
+a4     1         sub__a3  1         sub__sub2__b1        2
+a5     [1, 2]    sub__a4  1         sub__sub2__b2        2
+a6     1111111   sub__a5  [1, 2]                          
+a8     1         sub__a6  1111111"""
+    assert table.strip('\n ') == result.strip('\n ')
 
     table = make_table(args, cols='sub')
     assert len(table.splitlines()[0]) > 40

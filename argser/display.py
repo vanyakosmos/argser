@@ -25,16 +25,18 @@ def _get_table(args: Args):
 def _merge_str_cols(columns: List[str], gap='   '):
     parts = [c.splitlines() for c in columns]
     res = []
+    col_widths = [max(map(len, part)) for part in parts]
+
+    # for each line
     for i in range(max(map(len, parts))):
         row = ''
+        # iterate over columns
         for j, part in enumerate(parts):
-            if i < len(part):
-                row += part[i]
-            else:
-                row += ' ' * len(part[0])
+            # get row of current column
+            chunk = part[i] if i < len(part) else ''
+            row += chunk.ljust(col_widths[j])
             if j != len(parts) - 1:
                 row += gap
-
         res.append(row)
     return '\n'.join(res)
 
