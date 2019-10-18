@@ -1,0 +1,10 @@
+[report]
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    except ImportError
+    raise NotImplementedError
+    if __name__ == .__main__.:
+omit =
+    */__init__.py
+    */__main__.py

@@ -76,10 +76,13 @@ def test_complex_args():
 
 
 def test_positional_args():
+    def comp(**kwargs):  # for coverage
+        return []
+
     class Args:
         a = 1
         bb: str = PosArg()
-        ccc: List[int] = PosArg(metavar='C')
+        ccc: List[int] = PosArg(metavar='C', completer=comp)
         d = True
 
     args = parse_args(Args, '"foo bar" 1 2 -a 5 --no-d')
@@ -520,7 +523,7 @@ def test_help():
         dddd = 3
         foo_bar_baaaaaaaaz = 3
         v: int = Arg(action='count', default=0)
-        v1: int = Arg(action='count')
+        v1: int = Arg(action='count', help='bar')
         v2: int = Arg(action='count', help=IGNORE + "foo")
         ap: List[str] = Arg(action='append')
 
@@ -562,9 +565,19 @@ optional arguments:
     --dddd D                int, default: 3
     --foo_bar_baaaaaaaaz F  int, default: 3
     -v                      int, default: 0
-    --v1                    int, default: None
+    --v1                    int, default: None. bar
     --v2                    foo
     --ap A                  List[str], default: None
     """
 
     assert help_msg.strip('\n ') == real_help.strip('\n ')
+
+
+def test_cli():
+    from argser.__main__ import autocomplete, AutoArgs
+    args = AutoArgs()
+    args.executables = ['foo.py']
+    args.complete_arguments = None
+    args.shell = 'bash'
+    # run without errors:
+    autocomplete(args)
