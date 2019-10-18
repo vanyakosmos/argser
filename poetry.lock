@@ -7,6 +7,14 @@ python-versions = "*"
 version = "0.7.12"
 
 [[package]]
+category = "main"
+description = "Bash tab completion for argparse"
+name = "argcomplete"
+optional = true
+python-versions = "*"
+version = "1.10.0"
+
+[[package]]
 category = "dev"
 description = "Atomic file writes."
 name = "atomicwrites"
@@ -414,13 +422,16 @@ more-itertools = "*"
 
 [extras]
 tabulate = ["tabulate"]
+argcomplete = ["argcomplete"]
+all = ["tabulate", "argcomplete"]
 
 [metadata]
-content-hash = "25742b1b318a7b7bc2eb1ced17a2f4e5074f6d22c85326b27df0cdb8a5caed80"
+content-hash = "4e55c275032ea699f44cb79eaaf2fefbf80d14ad62412fd7105d29013d881460"
 python-versions = "^3.6"
 
 [metadata.hashes]
 alabaster = ["446438bdcca0e05bd45ea2de1668c1d9b032e1a9154c2c259092d77031ddd359", "a661d72d58e6ea8a57f7a86e37d86716863ee5e92788398526d58b26a4e4dc02"]
+argcomplete = ["2f2052ea5156eb5cc7edce9c0ddc937e30c49c1097d51b24f34350a08632a264", "45836de8cc63d2f6e06b898cef1e4ce1e9907d246ec77ac8e64f23f153d6bec1"]
 atomicwrites = ["03472c30eb2c5d1ba9227e4c2ca66ab8287fbfbbda3888aa93dc2e28fc6811b4", "75a9445bac02d8d058d5e1fe689654ba5a6556a1dfd8ce6ec55a0ed79866cfa6"]
 attrs = ["ec20e7a4825331c1b5ebf261d111e16fa9612c1f7a5e1f884f12bd53a664dfd2", "f913492e1663d3c36f502e5e9ba6cd13cf19d7fab50aa13239e420fef95e1396"]
 babel = ["af92e6106cb7c55286b25b38ad7695f8b4efb36a90ba483d7f7a6628c46158ab", "e86135ae101e31e2c8ec20a4e0c5220f4eed12487d5cf3f78be7e98d3a57fc28"]

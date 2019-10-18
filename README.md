@@ -15,6 +15,7 @@ Features:
 - 𝕡𝕣𝕖𝕥𝕥𝕪 𝕡𝕣𝕚𝕟𝕥𝕚𝕟𝕘
 - support for argparse actions
 - auto shortcuts generation: `--verbose -> -v, --foo_bar -> --fb`
+- auto completion in shell (with [argcomplete](https://argcomplete.readthedocs.io/en/latest/))
 
 ------
 
@@ -22,7 +23,9 @@ Features:
 
 ```text
 pip install argser
-pip install argser tabulate  # for fancy table support
+pip install argser[tabulate]  # for fancy tables support
+pip install argser[argcomplete]  # for shell auto completion
+pip install argser[all]
 ```
 
 ## [docs](https://argser.readthedocs.io/en/latest/)

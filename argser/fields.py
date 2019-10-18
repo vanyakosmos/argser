@@ -17,6 +17,8 @@ class Arg:
         help=None,
         metavar=None,
         action='store',
+        # argcomplete
+        completer=None,
         # extra
         bool_flag=True,
         one_dash=False,
@@ -43,6 +45,8 @@ class Arg:
         self.help = help
         self._metavar = metavar
         self.action = action
+        # argcomplete
+        self.completer = completer
         # extra
         self.bool_flag = bool_flag
         self.one_dash = one_dash
@@ -96,22 +100,26 @@ class Arg:
             params['help'] = IGNORE
             parser.add_argument(*self.names(prefix='no-'), action='store_false', **params)
             parser.set_defaults(**{self.dest: self.default})
-        else:
-            params = self.params(type=str2bool)
-            parser.add_argument(*self.names(), **params)
+            return action
+        params = self.params(type=str2bool)
+        return parser.add_argument(*self.names(), **params)
 
     def inject(self, parser: ArgumentParser):
         if self.type is bool:
-            return self.inject_bool(parser)
-        params = self.params()
-        action = params.get('action')
-        if action in (
-            'store_const', 'store_true', 'store_false', 'append_const', 'version', 'count'
-        ) and 'type' in params:
-            params.pop('type')
-        if action in ('store_true', 'store_false', 'count', 'version') and 'metavar' in params:
-            params.pop('metavar')
-        parser.add_argument(*self.names(), **params)
+            action = self.inject_bool(parser)
+        else:
+            params = self.params()
+            action = params.get('action')
+            if action in (
+                'store_const', 'store_true', 'store_false', 'append_const', 'version', 'count'
+            ) and 'type' in params:
+                params.pop('type')
+            if action in ('store_true', 'store_false', 'count', 'version') and 'metavar' in params:
+                params.pop('metavar')
+            action = parser.add_argument(*self.names(), **params)
+        if callable(self.completer):
+            action.completer = self.completer
+        return action
 
 
 class PosArg(Arg):

@@ -185,6 +185,14 @@ def _add_prefixed_key(source: dict, target: dict, prefix: str):
             target[m[1]] = value
 
 
+def _setup_argcomplete(parser, **kwargs):
+    try:
+        import argcomplete
+        argcomplete.autocomplete(parser, **kwargs)
+    except ImportError:
+        logger.log(VERBOSE, "argcomplete is not installed")
+
+
 def parse_args(
     args_cls: Type[Args],
     args=None,
@@ -197,6 +205,7 @@ def parse_args(
     override=False,
     parser_kwargs=None,
     tabulate_kwargs=None,
+    argcomplete_kwargs=None,
     **kwargs,
 ) -> Args:
     """
@@ -220,12 +229,15 @@ def parse_args(
         cols: number of columns. Can be 'auto' - len(args)/N, int - just number of columns,
         'sub' / 'sub-auto' / 'sub-INT' - split by sub-commands,
         gap: string, space between tables/columns
+    :param argcomplete_kwargs: argcomplete kwargs
     :param kwargs: params for tabulate and parser - tabulate_ARG=VAL or parser_ARG=VAL
     """
     tabulate_kwargs = tabulate_kwargs or {}
     _add_prefixed_key(kwargs, tabulate_kwargs, 'tabulate_')
     parser_kwargs = parser_kwargs or {}
     _add_prefixed_key(kwargs, parser_kwargs, 'parser_')
+    argcomplete_kwargs = argcomplete_kwargs or {}
+    _add_prefixed_key(kwargs, argcomplete_kwargs, 'argcomplete_')
 
     if isinstance(args, str):
         args_to_parse = shlex.split(args)
@@ -236,8 +248,6 @@ def parse_args(
         args_cls,
         override=override,
         bool_flag=bool_flag,
-        help_format=help_format,
-        keep_default_help=keep_default_help,
         one_dash=one_dash,
     )
     if make_shortcuts:
@@ -245,6 +255,7 @@ def parse_args(
     if help_color:
         parser_kwargs.setdefault('formatter_class', ColoredHelpFormatter)
     parser = _make_parser('root', args, sub_commands, **parser_kwargs)
+    _setup_argcomplete(parser, **argcomplete_kwargs)
 
     namespace = parser.parse_args(args_to_parse)
     logger.log(VERBOSE, namespace)

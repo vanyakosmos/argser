@@ -18,6 +18,7 @@ classifiers = [
 [tool.poetry.dependencies]
 python = "^3.6"
 tabulate = {version = "^0.8.5", optional = true}
+argcomplete = {version = "^1.10", optional = true}
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
@@ -29,6 +30,8 @@ m2r = "^0.2.1"
 
 [tool.poetry.extras]
 tabulate = ["tabulate"]
+argcomplete = ["argcomplete"]
+all = ["tabulate", "argcomplete"]
 
 [build-system]
 requires = ["poetry>=0.12"]
