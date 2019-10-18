@@ -31,7 +31,7 @@ def is_list_like_type(t):
     return list in getattr(t, '__orig_bases__', []) or orig and issubclass(list, orig)
 
 
-def add_color(text, fg='', bg='', style=''):
+def add_color(text, fg='', bg='', style=''):  # pragma: no cover
     """
     :param text:
     :param fg: [30, 38)

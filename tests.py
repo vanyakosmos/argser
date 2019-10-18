@@ -23,7 +23,7 @@ def test_simple():
     assert args.ccc_ddd == [1.1, 2.2]
     assert args.e == []
 
-    args = parse_args(Args, '-a 2 --bb "foo bar" --ccc_ddd 3.3 4.4 -e 1 0')
+    args = parse_args(Args, '-a 2 --bb "foo bar" --ccc-ddd 3.3 4.4 -e 1 0')
     assert args.a == 2
     assert args.bb == 'foo bar'
     assert args.ccc_ddd == [3.3, 4.4]
@@ -61,15 +61,15 @@ def test_complex_args():
         a: int = Arg(metavar='AA')
         bb: str = Arg(default='foo')
         ccc_ddd: List[float] = Arg(default=[1.1, 2.2])
-        e: List[bool] = Arg(default=[])
+        e: List[bool] = Arg(default=[True])
 
     args = parse_args(Args, '')
     assert args.a is None
     assert args.bb == 'foo'
     assert args.ccc_ddd == [1.1, 2.2]
-    assert args.e == []
+    assert args.e == [True]
 
-    args = parse_args(Args, '-a 2 --bb "foo bar" --ccc_ddd 3.3 4.4 -e 1 0')
+    args = parse_args(Args, '-a 2 --bb "foo bar" --ccc-ddd 3.3 4.4 -e 1 0')
     assert args.a == 2
     assert args.bb == 'foo bar'
     assert args.ccc_ddd == [3.3, 4.4]
@@ -85,6 +85,7 @@ def test_positional_args():
         bb: str = PosArg()
         ccc: List[int] = PosArg(metavar='C', completer=comp)
         d = True
+        dd: bool = Arg(help='foo')
 
     args = parse_args(Args, '"foo bar" 1 2 -a 5 --no-d')
     assert args.a == 5
@@ -174,6 +175,7 @@ def test_parse_bool():
         a: bool
         b = True
         c = False
+        d = [True, False]
 
     args = parse_args(Args, [])
     assert args.a is None
@@ -198,6 +200,10 @@ def test_parse_bool():
 
     with pytest.raises(SystemExit):
         parse_args(Args, '-a a', bool_flag=False)
+
+    # trigger help
+    with pytest.raises(SystemExit):
+        parse_args(Args, '-h')
 
 
 @pytest.fixture()
@@ -263,6 +269,7 @@ def test_parse_list_types(list_args):
 def test_prints():
     # just check that they work
     class Args:
+        n: str
         a = '1'
         b = 1
         c = 1.0
@@ -275,9 +282,12 @@ def test_prints():
 
         sub = sub_command(Sub)
 
+    parse_args(Args, '', show=True, colorize=True, shorten=True)
+    parse_args(Args, '', show=True, colorize=False, shorten=True)
     args = parse_args(Args, '', show=True)
     assert args.a == '1'
 
+    parse_args(Args, '', show='table', colorize=False, shorten=True)
     args = parse_args(Args, '-a 5 sub', show='table', tabulate_preset='fancy')
     assert args.a == '5'
     assert args.sub.f is True
@@ -327,16 +337,19 @@ def test_wide_table():
     assert len(table.splitlines()[0]) > 40
 
     # be careful with trailing spaces after sub__a5 [1, 2]
-    result = """
-arg    value     arg      value     arg              value
------  -------   -------  -------   -------------  -------
-a1     1         a7       1         sub__a7              1
-a2     1         sub__a1  1         sub__a8              1
-a3     1         sub__a2  1         sub__a9              1
-a4     1         sub__a3  1         sub__sub2__b1        2
-a5     [1, 2]    sub__a4  1         sub__sub2__b2        2
-a6     1111111   sub__a5  [1, 2]                          
-a8     1         sub__a6  1111111"""
+    result = textwrap.dedent(
+        """
+        arg    value     arg      value     arg              value
+        -----  -------   -------  -------   -------------  -------
+        a1     1         a7       1         sub__a7              1
+        a2     1         sub__a1  1         sub__a8              1
+        a3     1         sub__a2  1         sub__a9              1
+        a4     1         sub__a3  1         sub__sub2__b1        2
+        a5     [1, 2]    sub__a4  1         sub__sub2__b2        2
+        a6     1111111   sub__a5  [1, 2]                          
+        a8     1         sub__a6  1111111
+        """
+    )
     assert table.strip('\n ') == result.strip('\n ')
 
     table = make_table(args, cols='sub', colorize=False)
@@ -462,16 +475,6 @@ def test_action_append():
     assert args.a == [1, 2]
 
 
-@pytest.mark.skip("niche action, too lazy to fix")
-def test_action_append_const():
-    class Args:
-        a = Arg(dest='c', action='append_const', const=str)
-        b = Arg(dest='c', action='append_const', const=int)
-
-    args = parse_args(Args, '-a -b')
-    assert args.c == [str, int]
-
-
 def test_action_count():
     class Args:
         verbose: int = Arg(action='count', default=0)
@@ -516,7 +519,7 @@ def test_help():
     class Args:
         b: bool
         b1 = True
-        l = []
+        l0 = []
         l1 = [1]
         l2: List[float] = None
         f = 2.3
@@ -545,8 +548,8 @@ def test_help():
     help_msg = parser.format_help()
     real_help = textwrap.dedent(
         """
-        usage: prog [-h] [-b] [--no-b] [--b1] [--no-b1] [-l [L [L ...]]] [--l1 L [L ...]] [--l2 [L [L ...]]] [-f F] [-c N]
-                    [--dddd D] [--foo_bar_baaaaaaaaz F] [-v] [--v1] [--v2] [--ap A]
+        usage: prog [-h] [-b] [--no-b] [--b1] [--no-b1] [--l0 [L [L ...]]] [--l1 L [L ...]] [--l2 [L [L ...]]] [-f F] [-c N]
+                    [--dddd D] [--foo-bar-baaaaaaaaz F] [-v] [--v1] [--v2] [--ap A]
                     {sub} ...
         
         positional arguments:
@@ -559,13 +562,13 @@ def test_help():
             --no-b
             --b1                    bool, default: True
             --no-b1
-            -l [L [L ...]]          List[str], default: []
+            --l0 [L [L ...]]        List[str], default: []
             --l1 L [L ...]          List[int], default: [1]
             --l2 [L [L ...]]        List[float], default: None
             -f F                    float, default: 2.3
             -c N                    int, default: 5
             --dddd D                int, default: 3
-            --foo_bar_baaaaaaaaz F  int, default: 3
+            --foo-bar-baaaaaaaaz F  int, default: 3
             -v                      int, default: 0
             --v1                    int, default: None. bar
             --v2                    int, default: None. foo
