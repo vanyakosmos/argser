@@ -118,13 +118,13 @@ Actions
 
 
 Auto completion
-**************
+***************
 
 Check out argcomplete_.
 
 .. _argcomplete: https://argcomplete.readthedocs.io/en/latest
 
-Add autocomplete:
+Add autocompletes:
 
 .. code-block::
 
@@ -134,6 +134,6 @@ Add autocomplete:
     # using argser
     eval "$(argser auto)"  # for all scripts with PYTHON_ARGCOMPLETE_OK (in current dir)
     eval "$(argser auto foo.py)"  # specific file
-    eval "$(argser auto /path/to/dir)"  # for all scripts with PYTHON_ARGCOMPLETE_OK in /path/to/dir
+    eval "$(argser auto /path/to/dir)"  # for all scripts (with PYTHON_ARGCOMPLETE_OK) in /path/to/dir
     eval "$(argser auto /path/to/dir foo.py)"  # combine
     eval "$(argser auto --no-mark)"  # add autocomplete to every script

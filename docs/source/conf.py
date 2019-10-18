@@ -79,7 +79,6 @@ apidoc_module_dir = module_root
 apidoc_output_dir = 'modules'
 apidoc_excluded_paths = [
     'consts.py',
-    'utils.py',
     'logging.py',
 ]
 apidoc_separate_modules = True

@@ -41,7 +41,7 @@ class Args:
     bar: bool
 
 
-args = parse_args(Args)
+args = parse_args(Args, show=True)
 ```
 
 <details>
@@ -63,7 +63,7 @@ print(args)
 </details>
 
 ```text
-python playground.py -a "aaa bbb" -f 100500 --no-b
+❯ python playground.py -a "aaa bbb" -f 100500 --no-b
 >> Args(bar=False, a='aaa bbb', foo=100500)
 ```
 

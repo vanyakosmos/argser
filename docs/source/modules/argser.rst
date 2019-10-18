@@ -9,6 +9,7 @@ Submodules
    argser.display
    argser.fields
    argser.parser
+   argser.utils
 
 Module contents
 ---------------
