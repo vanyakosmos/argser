@@ -1,14 +1,40 @@
 import math
 import re
+import textwrap
 from collections import defaultdict
 from typing import List
 
 from argser.consts import Args, SUB_COMMAND_MARK
+from argser.utils import colors, vlen
 
 
-def stringify(args: Args):
-    pairs = ', '.join(map(lambda x: f"{x[0]}={x[1]!r}", args.__dict__.items()))
-    return f"{args.__class__.__name__}({pairs})"
+def stringify(args: Args, shorten=False):
+    def pair(x):
+        k, v = x
+        if shorten:
+            v = repr(v)
+            v = textwrap.shorten(v, width=20, placeholder='...')
+        return f"{k}={v}"
+
+    pairs = ', '.join(map(pair, args.__dict__.items()))
+    cls_name = args.__class__.__name__
+    return f"{cls_name}({pairs})"
+
+
+def stringify_colored(args: Args, shorten=False):
+    def pair(x):
+        k, v = x
+        if v is None:
+            v = colors.red('-')
+        else:
+            v = repr(v)
+            if shorten:
+                v = textwrap.shorten(v, width=20, placeholder='...')
+        return f"{colors.green(k)}={v}"
+
+    pairs = ', '.join(map(pair, args.__dict__.items()))
+    cls_name = colors.yellow(args.__class__.__name__)
+    return f"{cls_name}({pairs})"
 
 
 def _get_table(args: Args):
@@ -25,7 +51,7 @@ def _get_table(args: Args):
 def _merge_str_cols(columns: List[str], gap='   '):
     parts = [c.splitlines() for c in columns]
     res = []
-    col_widths = [max(map(len, part)) for part in parts]
+    col_widths = [max(map(vlen, part)) for part in parts]
 
     # for each line
     for i in range(max(map(len, parts))):
@@ -34,7 +60,7 @@ def _merge_str_cols(columns: List[str], gap='   '):
         for j, part in enumerate(parts):
             # get row of current column
             chunk = part[i] if i < len(part) else ''
-            row += chunk.ljust(col_widths[j])
+            row += chunk + ' ' * (col_widths[j] - vlen(chunk))
             if j != len(parts) - 1:
                 row += gap
         res.append(row)
@@ -72,10 +98,33 @@ def _split_by_sub(data: list, cols=1):
     return res
 
 
-def make_table(args: Args, preset=None, cols='sub-auto', gap='   ', **kwargs):
+def _colorize(data, kwargs):
+    h_arg, h_value = kwargs['headers']
+    kwargs['headers'] = colors.yellow(h_arg), colors.yellow(h_value)
+    for i, (key, value) in enumerate(data):
+        if value is None:
+            value = colors.red('-')
+        data[i] = colors.green(key), value
+
+
+def make_table(args: Args, preset=None, cols='sub-auto', gap='   ', colorize=True, shorten=False, **kwargs):
     from tabulate import tabulate
     kwargs.setdefault('headers', ['arg', 'value'])
     data = _get_table(args)
+
+    if colorize:
+        _colorize(data, kwargs)
+
+    for i, (key, value) in enumerate(data):
+        if value is None:
+            value = '-'
+        else:
+            value = str(value)
+            if shorten:
+                value = textwrap.shorten(value, width=40, placeholder='...')
+            else:
+                value = textwrap.fill(value, width=40)
+        data[i] = key, value
 
     if preset == 'fancy':
         cols = 'sub-auto'
@@ -93,11 +142,14 @@ def make_table(args: Args, preset=None, cols='sub-auto', gap='   ', **kwargs):
     return _merge_str_cols(parts, gap)
 
 
-def print_args(args: Args, variant=None, print_fn=None, **kwargs):
+def print_args(args: Args, variant=None, print_fn=None, colorize=True, shorten=False, **kwargs):
     if variant == 'table':
-        s = make_table(args, **kwargs)
+        s = make_table(args, colorize=colorize, shorten=shorten, **kwargs)
     elif variant:
-        s = stringify(args)
+        if colorize:
+            s = stringify_colored(args, shorten)
+        else:
+            s = stringify(args, shorten)
     else:
         s = None
     if s:

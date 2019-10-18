@@ -198,10 +198,11 @@ def parse_args(
     args=None,
     show=None,
     print_fn=None,
+    colorize=True,
+    shorten=False,
     make_shortcuts=True,
     bool_flag=True,
     one_dash=False,
-    help_color=True,
     override=False,
     parser_kwargs=None,
     tabulate_kwargs=None,
@@ -217,12 +218,13 @@ def parse_args(
         if True - print arguments in one line
         if 'table' - print arguments as table
     :param print_fn:
+    :param colorize: add colors to the help message and arguments printing
+    :param shorten: shorten long text (eg long default value)
     :param make_shortcuts: make short version of arguments: --abc -> -a, --abc_def -> --ad
     :param bool_flag:
         if True then read bool from argument flag: `--arg` is True, `--no-arg` is False,
         otherwise check if arg value and truthy or falsy: `--arg 1` is True `--arg no` is False
     :param one_dash: use one dash for long names: `-name` instead of `--name`
-    :param help_color: add colors to the help message
     :param override: override values above on Arg's
     :param parser_kwargs: root parser kwargs
     :param tabulate_kwargs: tabulate additional kwargs + some custom fields:
@@ -252,7 +254,7 @@ def parse_args(
     )
     if make_shortcuts:
         _make_shortcuts_sub_wise(args, sub_commands)
-    if help_color:
+    if colorize:
         parser_kwargs.setdefault('formatter_class', ColoredHelpFormatter)
     parser = _make_parser('root', args, sub_commands, **parser_kwargs)
     _setup_argcomplete(parser, **argcomplete_kwargs)
@@ -263,5 +265,5 @@ def parse_args(
     result = sub_command(args_cls)
     _set_values('root', result, namespace, args, sub_commands)
 
-    print_args(result, variant=show, print_fn=print_fn, **(tabulate_kwargs or {}))
+    print_args(result, variant=show, print_fn=print_fn, colorize=colorize, shorten=shorten, **tabulate_kwargs)
     return result

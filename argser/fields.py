@@ -1,7 +1,6 @@
-from argparse import ArgumentParser
+from argparse import ArgumentParser, SUPPRESS
 from typing import Iterable
 
-from argser.consts import IGNORE
 from argser.utils import str2bool
 
 
@@ -97,9 +96,11 @@ class Arg:
         if self.bool_flag and self.nargs not in ('*', '+'):
             params = self.params(exclude=('type', 'nargs', 'metavar', 'action'))
             action = parser.add_argument(*self.names(), action='store_true', **params)
-            params['help'] = IGNORE
-            parser.add_argument(*self.names(prefix='no-'), action='store_false', **params)
             parser.set_defaults(**{self.dest: self.default})
+            params['default'] = SUPPRESS  # don't print help message for second flag
+            if 'help' in params:
+                del params['help']
+            parser.add_argument(*self.names(prefix='no-'), action='store_false', **params)
             return action
         params = self.params(type=str2bool)
         return parser.add_argument(*self.names(), **params)

@@ -1,9 +1,10 @@
+import textwrap
 from argparse import Action
 from typing import Callable, List
 
 import pytest
 
-from argser import Arg, PosArg, make_table, parse_args, sub_command, IGNORE
+from argser import Arg, PosArg, make_table, parse_args, sub_command
 # noinspection PyProtectedMember
 from argser.parser import _make_parser, _make_shortcuts_sub_wise, _read_args
 from argser.utils import ColoredHelpFormatter, is_list_like_type, colors
@@ -313,16 +314,16 @@ def test_wide_table():
         sub = sub_command(Sub)
 
     args = parse_args(Args, 'sub sub2')
-    table = make_table(args, cols=None)
+    table = make_table(args, cols=None, colorize=False)
     assert len(table.splitlines()[0]) < 40
 
-    table = make_table(args, cols='auto')
+    table = make_table(args, cols='auto', colorize=False)
     assert len(table.splitlines()[0]) > 40
 
-    table = make_table(args, cols=1)
+    table = make_table(args, cols=1, colorize=False)
     assert len(table.splitlines()[0]) < 40
 
-    table = make_table(args, cols=3)
+    table = make_table(args, cols=3, colorize=False)
     assert len(table.splitlines()[0]) > 40
 
     # be careful with trailing spaces after sub__a5 [1, 2]
@@ -338,16 +339,16 @@ a6     1111111   sub__a5  [1, 2]
 a8     1         sub__a6  1111111"""
     assert table.strip('\n ') == result.strip('\n ')
 
-    table = make_table(args, cols='sub')
+    table = make_table(args, cols='sub', colorize=False)
     assert len(table.splitlines()[0]) > 40
 
-    table = make_table(args, cols='sub-auto')
+    table = make_table(args, cols='sub-auto', colorize=False)
     assert len(table.splitlines()[0]) > 40
 
-    table = make_table(args, cols='sub-3')
+    table = make_table(args, cols='sub-3', colorize=False)
     assert len(table.splitlines()[0]) > 40
 
-    table = make_table(args, preset='fancy')
+    table = make_table(args, preset='fancy', colorize=False)
     assert len(table.splitlines()[0]) > 40
 
 
@@ -524,7 +525,7 @@ def test_help():
         foo_bar_baaaaaaaaz = 3
         v: int = Arg(action='count', default=0)
         v1: int = Arg(action='count', help='bar')
-        v2: int = Arg(action='count', help=IGNORE + "foo")
+        v2: int = Arg(action='count', help="foo")
         ap: List[str] = Arg(action='append')
 
         class Sub:
@@ -542,33 +543,35 @@ def test_help():
     args_cls, args, sub_commands = _read_args(Args)
     parser = _make_parser('root', args, sub_commands, formatter_class=HelpFormatter, prog='prog')
     help_msg = parser.format_help()
-    real_help = """
-usage: prog [-h] [-b] [--no-b] [--b1] [--no-b1] [-l [L [L ...]]] [--l1 L [L ...]] [--l2 [L [L ...]]] [-f F] [-c N]
-            [--dddd D] [--foo_bar_baaaaaaaaz F] [-v] [--v1] [--v2] [--ap A]
-            {sub} ...
-
-positional arguments:
-    {sub}
-        sub                 sub1 help
-
-optional arguments:
-    -h, --help              show this help message and exit
-    -b                      bool, default: None
-    --no-b
-    --b1                    bool, default: True
-    --no-b1
-    -l [L [L ...]]          List[list], default: []
-    --l1 L [L ...]          List[list], default: [1]
-    --l2 [L [L ...]]        List[float], default: None
-    -f F                    float, default: 2.3
-    -c N                    int, default: 5
-    --dddd D                int, default: 3
-    --foo_bar_baaaaaaaaz F  int, default: 3
-    -v                      int, default: 0
-    --v1                    int, default: None. bar
-    --v2                    foo
-    --ap A                  List[str], default: None
-    """
+    real_help = textwrap.dedent(
+        """
+        usage: prog [-h] [-b] [--no-b] [--b1] [--no-b1] [-l [L [L ...]]] [--l1 L [L ...]] [--l2 [L [L ...]]] [-f F] [-c N]
+                    [--dddd D] [--foo_bar_baaaaaaaaz F] [-v] [--v1] [--v2] [--ap A]
+                    {sub} ...
+        
+        positional arguments:
+            {sub}
+                sub                 sub1 help
+        
+        optional arguments:
+            -h, --help              show this help message and exit
+            -b                      bool, default: None
+            --no-b
+            --b1                    bool, default: True
+            --no-b1
+            -l [L [L ...]]          List[str], default: []
+            --l1 L [L ...]          List[int], default: [1]
+            --l2 [L [L ...]]        List[float], default: None
+            -f F                    float, default: 2.3
+            -c N                    int, default: 5
+            --dddd D                int, default: 3
+            --foo_bar_baaaaaaaaz F  int, default: 3
+            -v                      int, default: 0
+            --v1                    int, default: None. bar
+            --v2                    int, default: None. foo
+            --ap A                  List[str], default: None
+        """
+    )
 
     assert help_msg.strip('\n ') == real_help.strip('\n ')
 
