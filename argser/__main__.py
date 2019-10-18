@@ -10,23 +10,69 @@ argcomplete_desc = "Add auto completion for scripts. Ex: eval \"$(python -m args
 
 
 class AutoArgs:
-    executables: List[str] = argser.PosArg()
+    executables: List[str] = argser.PosArg(
+        default=[],
+        help=(
+            "List of python scripts to add autocompletes to. If none is specified then argser "
+            "will search for scripts with PYTHON_ARGCOMPLETE_OK mark."
+        )
+    )
     use_defaults = True
     complete_arguments = argser.Arg(nargs=argparse.REMAINDER)
     shell: str = argser.Arg(choices=('bash', 'tcsh', 'fish'), default='bash')
+    mark: bool = argser.Arg(default=True, help="Add only scripts with PYTHON_ARGCOMPLETE_OK mark.")
+
+
+def _find_scripts(path: str, mark=True):
+    for fp in glob.glob(path, recursive=True):
+        fp = os.path.abspath(fp)
+        if mark:
+            with open(fp) as f:
+                if 'PYTHON_ARGCOMPLETE_OK' in f.read(1024):
+                    yield fp
+        else:
+            yield fp
+
+
+def find_scripts(mark=True):
+    res = list(_find_scripts(os.path.join('.', '**', '*.py'), mark))
+    if not res:
+        raise FileNotFoundError(f"no python files with PYTHON_ARGCOMPLETE_OK marker")
+    return res
+
+
+def extract_scripts(executables: List[str], mark=True):
+    res = []
+    for i, ex in enumerate(executables):
+        executables[i] = os.path.abspath(ex)
+        if os.path.isdir(ex):
+            res.extend(_find_scripts(os.path.join(ex, '*.py'), mark))
+        elif os.path.exists(ex):
+            res.append(os.path.abspath(ex))
+    if not res:
+        files = '\n'.join(map(lambda x: f'- {x}', executables))
+        raise FileNotFoundError(f"no python files were found in:\n{files}")
+    return res
 
 
 def autocomplete(args: AutoArgs):
     import argcomplete
 
-    exs = []
-    for i, ex in enumerate(args.executables):
-        if os.path.isdir(ex):
-            exs.extend(glob.glob(os.path.join(ex, '*.py')))
+    try:
+        if args.executables:
+            exs = extract_scripts(args.executables, args.mark)
         else:
-            exs.append(ex)
+            exs = find_scripts(args.mark)
+    except FileNotFoundError as e:
+        sys.stderr.write(f"{e}\n")
+        return
+
     # noinspection PyTypeChecker
-    sys.stdout.write(argcomplete.shellcode(exs, args.use_defaults, args.shell, args.complete_arguments))
+    print(argcomplete.shellcode(exs, args.use_defaults, args.shell, args.complete_arguments))
+
+    print("added autocompletion to files (if you ran this with eval):", file=sys.stderr)
+    for file in exs:
+        print(f"- {file}", file=sys.stderr)
 
 
 class Args:
