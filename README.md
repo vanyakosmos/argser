@@ -15,7 +15,7 @@ Features:
 - 𝕡𝕣𝕖𝕥𝕥𝕪 𝕡𝕣𝕚𝕟𝕥𝕚𝕟𝕘
 - support for argparse actions
 - auto shortcuts generation: `--verbose -> -v, --foo_bar -> --fb`
-- auto completion in shell (with [argcomplete](https://argcomplete.readthedocs.io/en/latest/))
+- [auto completion](https://argser.readthedocs.io/en/latest/examples.html#auto-completion) in shell (tnx to [argcomplete](https://argcomplete.readthedocs.io/en/latest/))
 
 ------
 

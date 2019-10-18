@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "argser"
-version = "0.0.7"
+version = "0.0.8"
 description = "Arguments parsing without boilerplate."
 authors = ["Bachynin Ivan <bachynin.i@gmail.com>"]
 license = "MIT"
@@ -36,3 +36,6 @@ all = ["tabulate", "argcomplete"]
 [build-system]
 requires = ["poetry>=0.12"]
 build-backend = "poetry.masonry.api"
+
+[tool.poetry.scripts]
+argser = "argser.__main__:main"

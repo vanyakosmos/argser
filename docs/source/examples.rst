@@ -86,13 +86,13 @@ Actions
 
 .. code-block:: python
 
-      class Args:
-          a = Arg(action='store_const', default='42', const=42)
+    class Args:
+        a = Arg(action='store_const', default='42', const=42)
 
-      args = parse_args(Args, '')
-      assert args.a == '42'
-      args = parse_args(Args, '-a')
-      assert args.a == 42
+    args = parse_args(Args, '')
+    assert args.a == '42'
+    args = parse_args(Args, '-a')
+    assert args.a == 42
 
 .. code-block:: python
 
@@ -115,3 +115,18 @@ Actions
 
     args = parse_args(Args, '-vvv')
     assert args.verbose == 3
+
+
+Auto completion
+**************
+
+Check out argcomplete_.
+
+.. _argcomplete: https://argcomplete.readthedocs.io/en/latest
+
+.. code-block::
+
+    eval "$(register-python-argcomplete foo.py)"
+    eval "$(argser auto foo.py)"  # specific file
+    eval "$(argser auto /path/to/dir)"  # all .py files in dir
+    eval "$(argser auto /path/to/dir foo.py)"  # combine
