@@ -61,6 +61,7 @@ def _read_args(
     override=False,
     bool_flag=True,
     one_dash=False,
+    replace_underscores=True,
 ):
     args = []
     sub_commands = {}
@@ -84,6 +85,7 @@ def _read_args(
             if override:
                 value.bool_flag = bool_flag
                 value.one_dash = one_dash
+                value.replace_underscores = replace_underscores
             logger.log(VERBOSE, value.__dict__)
             args.append(value)
             continue
@@ -97,6 +99,7 @@ def _read_args(
                 # extra
                 bool_flag=bool_flag,
                 one_dash=one_dash,
+                replace_underscores=replace_underscores,
             )
         )
     return args_cls, args, sub_commands
@@ -201,6 +204,7 @@ def parse_args(
     colorize=True,
     shorten=False,
     make_shortcuts=True,
+    replace_underscores=True,
     bool_flag=True,
     one_dash=False,
     override=False,
@@ -221,6 +225,7 @@ def parse_args(
     :param colorize: add colors to the help message and arguments printing
     :param shorten: shorten long text (eg long default value)
     :param make_shortcuts: make short version of arguments: --abc -> -a, --abc_def -> --ad
+    :param replace_underscores: replace underscores in argument names with dashes
     :param bool_flag:
         if True then read bool from argument flag: `--arg` is True, `--no-arg` is False,
         otherwise check if arg value and truthy or falsy: `--arg 1` is True `--arg no` is False
@@ -251,6 +256,7 @@ def parse_args(
         override=override,
         bool_flag=bool_flag,
         one_dash=one_dash,
+        replace_underscores=replace_underscores,
     )
     if make_shortcuts:
         _make_shortcuts_sub_wise(args, sub_commands)

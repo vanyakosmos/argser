@@ -21,6 +21,7 @@ class Arg:
         # extra
         bool_flag=True,
         one_dash=False,
+        replace_underscores=True,
         **kwargs,
     ):
         """
@@ -34,6 +35,7 @@ class Arg:
             if True then read bool from argument flag: `--arg` is True, `--no-arg` is False,
             otherwise check if arg value and truthy or falsy: `--arg 1` is True `--arg no` is False
         :param one_dash: use one dash for long names: `-name` instead of `--name`
+        :param replace_underscores: replace underscores in argument names with dashes
         :param kwargs: extra arguments for `parser.add_argument`
         """
         self.dest = dest
@@ -49,6 +51,7 @@ class Arg:
         # extra
         self.bool_flag = bool_flag
         self.one_dash = one_dash
+        self.replace_underscores = replace_underscores
         self.extra = kwargs
 
     def __str__(self):
@@ -68,6 +71,8 @@ class Arg:
 
     def names(self, prefix=None):
         names = [self.dest, *self.aliases]
+        if self.replace_underscores:
+            names = ['-'.join(n.split('_')) for n in names]
         if prefix:
             names = [f'{prefix}{n}' for n in names]
         for name in names:
