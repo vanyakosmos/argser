@@ -421,12 +421,12 @@ version = "0.6.0"
 more-itertools = "*"
 
 [extras]
-tabulate = ["tabulate"]
-argcomplete = ["argcomplete"]
 all = ["tabulate", "argcomplete"]
+argcomplete = ["argcomplete"]
+tabulate = ["tabulate"]
 
 [metadata]
-content-hash = "4e55c275032ea699f44cb79eaaf2fefbf80d14ad62412fd7105d29013d881460"
+content-hash = "93291b50718753959f5de093f37332b897bdadc1e26534ad4292eeb43b6cdf5f"
 python-versions = "^3.6"
 
 [metadata.hashes]

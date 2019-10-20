@@ -16,9 +16,7 @@ import sys
 
 # sys.path.insert(0, os.path.abspath(os.pardir))
 root = os.path.abspath(os.path.join(os.path.pardir, os.path.pardir))
-module_root = os.path.abspath(os.path.join(os.path.pardir, os.path.pardir, 'argser'))
-sys.path.insert(0, module_root)
-# sys.path.insert(0, os.path.abspath(module_dir))
+sys.path.insert(0, root)
 
 # -- Project information -----------------------------------------------------
 
@@ -75,11 +73,13 @@ html_context = {
 
 # -- Extensions --------------------------------------------------------------
 
-apidoc_module_dir = module_root
+apidoc_module_dir = root
 apidoc_output_dir = 'modules'
 apidoc_excluded_paths = [
-    'consts.py',
-    'logging.py',
+    'argser/consts.py',
+    'argser/logging.py',
+    'tests',
+    './*.py',
 ]
 apidoc_separate_modules = True
 apidoc_toc_file = False
