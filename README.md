@@ -1,7 +1,7 @@
 # argser
 
 [![PyPI version](https://badge.fury.io/py/argser.svg)](http://badge.fury.io/py/argser)
-[![Build Status](https://github.com/vanyakosmos/argser/workflows/build/badge.svg)](https://github.com/vanyakosmos/argser/actions?workflow=build)
+[![Build Status](https://github.com/vanyakosmos/argser/workflows/test-publish/badge.svg)](https://github.com/vanyakosmos/argser/actions?workflow=build)
 [![Coverage](https://codecov.io/gh/vanyakosmos/argser/branch/master/graph/badge.svg)](https://codecov.io/gh/vanyakosmos/argser)
 [![License](https://img.shields.io/github/license/mashape/apistatus.svg)](https://pypi.python.org/pypi/argser/)
 [![Downloads](https://pepy.tech/badge/argser)](https://pepy.tech/project/argser)
