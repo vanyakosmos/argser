@@ -126,7 +126,7 @@ Check out argcomplete_.
 
 Add autocompletes:
 
-.. code-block::
+.. code-block:: bash
 
     # using argcomplete's script
     eval "$(register-python-argcomplete foo.py)"
