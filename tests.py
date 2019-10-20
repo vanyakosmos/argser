@@ -101,11 +101,13 @@ def test_make_shortcuts():
     ab_cd = Arg(dest='ab_cd', type=str)
     ab_cde = Arg(dest='ab_cde', type=str)
     bcd = PosArg(dest='bcd', type=str, aliases=('foo',))
+    f1 = Arg(dest='f1', aliases=('f3',), type=str)
+    f2_3 = Arg(dest='f2_3', type=str)
     # sub
     aaa = Arg(dest='aaa', type=str)
     ab_cd2 = Arg(dest='ab_cd', type=str)
 
-    _make_shortcuts_sub_wise([a, aa, bc, ab_cd, ab_cde, bcd], {'sub': (None, [aaa, ab_cd2], {})})
+    _make_shortcuts_sub_wise([a, aa, bc, ab_cd, ab_cde, bcd, f1, f2_3], {'sub': (None, [aaa, ab_cd2], {})})
     assert a.dest == 'a' and a.aliases == ()  # already short name
     assert aa.dest == 'aa' and aa.aliases == ()  # name 'a' already exists
     assert bc.dest == 'bc' and bc.aliases == ('b',)
@@ -114,6 +116,8 @@ def test_make_shortcuts():
     assert bcd.dest == 'bcd' and bcd.aliases == ('foo',)  # alias was already defined and override is false
     assert aaa.dest == 'aaa' and aaa.aliases == ('a',)
     assert ab_cd2.dest == 'ab_cd' and ab_cd2.aliases == ('ac',)
+    assert f1.aliases == ('f3',)
+    assert f2_3.aliases == ()
 
 
 def test_parse_str():

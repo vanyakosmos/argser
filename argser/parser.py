@@ -141,24 +141,28 @@ def _set_values(parser_name: str, res: Args, namespace: Namespace, args: List[Ar
     logger.log(VERBOSE, f'setting complete: {res}')
 
 
+def _make_shortcut(name: str):
+    """aaa -> a, aaa_bbb -> ab"""
+    parts = name.split('_')
+    return ''.join([p[0] for p in parts if len(p) > 0])
+
+
 def _make_shortcuts(args: List[Arg]):
     """
     Add shortcuts to arguments without defined aliases.
     todo: deal with duplicated names
     """
-    used = defaultdict(int)
+    used = defaultdict(lambda: False)
     for arg in args:
-        used[arg.dest] += 1
+        for n in arg.names:
+            used[n] = True
     for arg in args:
         if arg.aliases != ():
             continue
-        # aaa -> a, aaa_bbb -> ab
-        a = ''.join(map(lambda e: e[0], arg.dest.split('_')))
-        if a == arg.dest:
+        a = _make_shortcut(arg.dest)
+        if used[a] > 0:
             continue
-        used[a] += 1
-        if used[a] > 1:
-            continue
+        used[a] = True
         arg.aliases = (a,)
 
 

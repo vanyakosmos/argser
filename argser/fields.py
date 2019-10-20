@@ -55,7 +55,7 @@ class Arg:
         self.extra = kwargs
 
     def __str__(self):
-        names = ', '.join(self.names())
+        names = ', '.join(self.keys())
         type_name = getattr(self.type, '__name__', None)
         return f"Arg({names}, type={type_name}, default={self.default!r})"
 
@@ -69,8 +69,12 @@ class Arg:
         if self.dest:
             return self.dest[0].upper()
 
-    def names(self, prefix=None):
-        names = [self.dest, *self.aliases]
+    @property
+    def names(self):
+        return [self.dest, *self.aliases]
+
+    def keys(self, prefix=None):
+        names = self.names
         if self.replace_underscores:
             names = ['-'.join(n.split('_')) for n in names]
         if prefix:
@@ -100,15 +104,15 @@ class Arg:
     def inject_bool(self, parser: ArgumentParser):
         if self.bool_flag and self.nargs not in ('*', '+'):
             params = self.params(exclude=('type', 'nargs', 'metavar', 'action'))
-            action = parser.add_argument(*self.names(), action='store_true', **params)
+            action = parser.add_argument(*self.keys(), action='store_true', **params)
             parser.set_defaults(**{self.dest: self.default})
             params['default'] = SUPPRESS  # don't print help message for second flag
             if 'help' in params:
                 del params['help']
-            parser.add_argument(*self.names(prefix='no-'), action='store_false', **params)
+            parser.add_argument(*self.keys(prefix='no-'), action='store_false', **params)
             return action
         params = self.params(type=str2bool)
-        return parser.add_argument(*self.names(), **params)
+        return parser.add_argument(*self.keys(), **params)
 
     def inject(self, parser: ArgumentParser):
         if self.type is bool:
@@ -122,7 +126,7 @@ class Arg:
                 params.pop('type')
             if action in ('store_true', 'store_false', 'count', 'version') and 'metavar' in params:
                 params.pop('metavar')
-            action = parser.add_argument(*self.names(), **params)
+            action = parser.add_argument(*self.keys(), **params)
         if callable(self.completer):
             action.completer = self.completer
         return action
@@ -143,5 +147,5 @@ class PosArg(Arg):
         exclude += ('dest',)
         return super().params(exclude=exclude, **kwargs)
 
-    def names(self, prefix=None):
+    def keys(self, prefix=None):
         return [self.dest]
