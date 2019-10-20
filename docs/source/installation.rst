@@ -1,7 +1,7 @@
 Installation
 ============
 
-.. code-block::
+.. code-block:: bash
 
     pip install argser
     pip install argser[tabulate]  # for fancy table support
