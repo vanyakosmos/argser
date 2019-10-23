@@ -591,3 +591,35 @@ def test_cli():
     args.shell = 'bash'
     # run without errors:
     autocomplete(args)
+
+
+def test_reusability():
+    class CommonArgs:
+        a: int
+        b: float
+        c = 'c'
+
+    class Args1(CommonArgs):
+        a: str
+        c = 2
+        d: float
+
+    class Args2(CommonArgs):
+        e = 'foo'
+
+    args = parse_args(CommonArgs, '-a 1 -b 2.2 -c cc')
+    assert args.a == 1
+    assert args.b == 2.2
+    assert args.c == 'cc'
+
+    args = parse_args(Args1, '-a 1 -b 4.4 -c 5 -d 2.2')
+    assert args.a == '1'
+    assert args.b == 4.4
+    assert args.c == 5
+    assert args.d == 2.2
+
+    args = parse_args(Args2, '-a 1 -b 5.5 -e "foo bar"')
+    assert args.a == 1
+    assert args.b == 5.5
+    assert args.c == 'c'
+    assert args.e == 'foo bar'

@@ -55,7 +55,7 @@ class Arg:
         self.extra = kwargs
 
     def __str__(self):
-        names = ', '.join(self.keys())
+        names = ', '.join(self.keys()) or '-'
         type_name = getattr(self.type, '__name__', None)
         return f"Arg({names}, type={type_name}, default={self.default!r})"
 
@@ -71,7 +71,8 @@ class Arg:
 
     @property
     def names(self):
-        return [self.dest, *self.aliases]
+        names = [self.dest, *self.aliases]
+        return [n for n in names if n]
 
     def keys(self, prefix=None):
         names = self.names

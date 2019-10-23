@@ -46,39 +46,104 @@ Sub-commands
 Arguments
 *********
 
+str / int / float
+
 .. code-block:: python
 
-  from typing import List
-  from argser import Arg, PosArg
+    class Args:
+        a: str  # default is None
+        b = 2  # default is 2
+        c: float = Arg(default=3.0, help="a3")  # default is 3.0, with additional help text
 
-  class Args:
-      # str / int / float
-      a1: str  # default is None
-      a2 = 2  # default is 2
-      a3: float = Arg(default=3.0, help="a3")  # default is 3.0, with additional help text
+    args = parse_args(Args, '-a "foo bar" -b 5 -c 4.2')
+    assert args.a == 'foo bar'
+    assert args.b == 5
+    assert args.c == 4.2
 
-      # bool
-      b1: bool  # default is None, to change use flags: --b1 or --no-b1
-      b2 = True  # default is True, to change to False: ./script.py --no-b2
-      b3 = False  # default is False, to change to True: ./script.py --b3
-      b4: bool = Arg(bool_flag=False)  # to change - specify value after flag: `--b4 1` or `--b4 false` or ...
 
-      # list
-      l1 = []  # default = [], type = str, nargs = *
-      l2: List[int] = []  # default = [], type = int, nargs = *
-      l3 = [1.0]  # default = [], type = float, nargs = +
-      l4: List[int] = Arg(default=[], nargs='+')  # default = [], type = int, nargs = +
+booleans
 
-      # positional args
-      c1: float = PosArg()  # ./script.py 12.34
+.. code-block:: python
 
-      # one dash
-      d1: int = Arg(one_dash=True)  # ./script.py -d1 1
+    class Args:
+        a: bool  # default is None, to change use flags: -a or --no-a
+        b = True  # default is True, to change to False: ./script.py --no-b
+        c = False  # default is False, to change to True: ./script.py -c
+        d: bool = Arg(bool_flag=False)  # to change - specify value after flag: `-d 1` or `-d false` or ...
 
-      # help
-      h1 = Arg()  # only default help message: "str, default: None."
-      h2 = Arg(help="foo bar")  # default + custom: "str, default: None. foo bar"
-      h3 = Arg(help="foo bar", keep_default_help=False)  # just custom: "foo bar"
+    args = parse_args(Args, '-d 0')
+    assert args.a is None
+    assert args.b is True
+    assert args.c is False
+    assert args.d is False
+
+    args = parse_args(Args, '-a --no-b -c -d 1')
+    assert args.a is True
+    assert args.b is False
+    assert args.c is True
+    assert args.d is True
+
+
+lists
+
+.. code-block:: python
+
+    class Args:
+        # list
+        a = []  # default = [], type = str, nargs = *
+        b: List[int] = []  # default = [], type = int, nargs = *
+        c = [1.0]  # default = [], type = float, nargs = +
+        d: List[int] = Arg(default=[], nargs='+')  # default = [], type = int, nargs = +
+
+    args = parse_args(Args, '-a "foo bar" "baz"')
+    assert args.a == ["foo bar", "baz"]
+    args = parse_args(Args, '-b 1 2 3')
+    assert args.b == [1, 2, 3]
+    args = parse_args(Args, '-c 1.1 2.2')
+    assert args.c == [1.1, 2.2]
+    args = parse_args(Args, '-d')  # error, -d should have more then one element
+
+
+positional arguments
+
+.. code-block:: python
+
+    class Args:
+        a: float = PosArg()
+        b: str = PosArg()
+
+    args = parse_args(Args, '5 "foo bar"')
+    assert args.a == 5
+    assert args.b == 'foo bar'
+
+
+one dash
+
+.. code-block:: python
+
+    class Args:
+        aaa: int = Arg(one_dash=False)
+        bbb: int = Arg(one_dash=True)
+
+    args = parse_args(Args, '--aaa 42 -bbb 42')
+    assert args.aaa == 42
+    assert args.bbb == 42
+
+
+
+argparse params
+
+.. code-block:: python
+
+    class Args:
+        a = Arg(help="foo bar")  # with additional help message
+        b = Arg(action='count')
+        c: List[int] = Arg(action='append')
+
+    args = parse_args(Args, '-a foo -bbb -c 1 -c 2')
+    assert args.a == 'foo'
+    assert args.b == 3
+    assert args.c == [1, 2]
 
 
 Actions
@@ -117,10 +182,31 @@ Actions
     assert args.verbose == 3
 
 
+Reusability
+***********
+
+.. code-block:: python
+
+    class CommonArgs:
+        value: int
+        verbose = Arg(action='count', default=0)
+        model_path = 'foo.pkl'
+
+    class Args1(CommonArgs):
+        value: str  # redefine
+        epoch = 10
+
+    class Args2(CommonArgs):
+        type = 'bert'
+
+    args = parse_args(Args1, '--value "foo bar" --epoch 5')
+    args = parse_args(Args2, '--value 10 --type albert')
+
+
 Auto completion
 ***************
 
-Check out argcomplete_.
+Check out argcomplete_ for setup guide.
 
 .. _argcomplete: https://argcomplete.readthedocs.io/en/latest
 

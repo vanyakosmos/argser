@@ -6,6 +6,11 @@
 [![License](https://img.shields.io/github/license/mashape/apistatus.svg)](https://pypi.python.org/pypi/argser/)
 [![Downloads](https://pepy.tech/badge/argser)](https://pepy.tech/project/argser)
 
+[GitHub](https://github.com/vanyakosmos/argser) | 
+[PyPI](https://pypi.org/project/argser/) | 
+[Docs](https://argser.readthedocs.io/en/latest) | 
+[Examples](https://argser.readthedocs.io/en/latest/examples.html)
+
 Arguments parsing without boilerplate.
 
 Features:
@@ -14,6 +19,7 @@ Features:
 - sane defaults for arguments' params (ie if default of arg is 3 then type should be int, or when annotation/type/default is `bool` then generate 2 arguments: for true value `--arg` and for false `--no-arg`, ...)
 - 𝕡𝕣𝕖𝕥𝕥𝕪 𝕡𝕣𝕚𝕟𝕥𝕚𝕟𝕘
 - support for argparse actions
+- common options/arguments reusability
 - auto shortcuts generation: `--verbose -> -v, --foo_bar -> --fb`
 - [auto completion](https://argser.readthedocs.io/en/latest/examples.html#auto-completion) in shell (tnx to [argcomplete](https://argcomplete.readthedocs.io/en/latest/))
 
@@ -27,8 +33,6 @@ pip install argser[tabulate]  # for fancy tables support
 pip install argser[argcomplete]  # for shell auto completion
 pip install argser[all]
 ```
-
-## [docs](https://argser.readthedocs.io/en/latest/)
 
 ## simple example
 
@@ -108,38 +112,46 @@ assert args.sub.e == 'foo bar'
 
 ```text
 ❯ python playground.py -h
-usage: playground.py [-h] [-a] [--no-a] [-b [B [B ...]]] [-c [C]]
-                     {sub1,sub2} ...
+usage: playground.py [-h] [-a] [--no-a] [-b [B [B ...]]] [-c C] {sub} ...
 
 positional arguments:
-  {sub1,sub2}
+    {sub}
 
 optional arguments:
-  -h, --help      show this help message and exit
-  -a              bool, default: None.
-  --no-a
-  -b [B [B ...]]  List[str], default: [].
-  -c [C]          int, default: 5.
+    -h, --help      show this help message and exit
+    -a              bool, default: None
+    --no-a
+    -b [B [B ...]]  List[str], default: []
+    -c C            int, default: 5
 ```
 
 ```text
 ❯ python playground.py sub1 -h
-usage: playground.py sub1 [-h] [-d [D]] [-e [E]]
+usage: playground.py sub [-h] [-d D] [-e E]
+
+help message for sub-command
 
 optional arguments:
-  -h, --help  show this help message and exit
-  -d [D]      int, default: 1.
-  -e [E]      str, default: '2'.
+    -h, --help  show this help message and exit
+    -d D        int, default: 1
+    -e E        str, default: '2'
 ```
 
-## notes
-
-1. explicitly specify type annotation for arguments defined with `Arg` class to help your IDE
-
+Can be deep nested:
 ```python
-class Args:
-    a: int = Arg(default=3)
-```
+from argser import parse_args, sub_command
 
-`argser` will know about type of `a` without annotation (it can be determined by default value), 
-but if you want your IDE to know that `args.a` is `int` and not `Arg` then you need an explicit annotation.
+class Args:
+    a = 1
+    class Sub1:
+        b = 1
+        class Sub2:
+            c = 1
+            class Sub3:
+                d = 1
+            sub3 = sub_command(Sub3)
+        sub2 = sub_command(Sub2)
+    sub1 = sub_command(Sub1)
+
+args = parse_args(Args, '-a 1 sub1 -b 2 sub2 -c 3 sub3 -d 4')
+```
