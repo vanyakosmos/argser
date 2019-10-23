@@ -53,7 +53,7 @@ str / int / float
     class Args:
         a: str  # default is None
         b = 2  # default is 2
-        c: float = Arg(default=3.0, help="a3")  # default is 3.0, with additional help text
+        c: float = Opt(default=3.0, help="a3")  # default is 3.0, with additional help text
 
     args = parse_args(Args, '-a "foo bar" -b 5 -c 4.2')
     assert args.a == 'foo bar'
@@ -69,7 +69,7 @@ booleans
         a: bool  # default is None, to change use flags: -a or --no-a
         b = True  # default is True, to change to False: ./script.py --no-b
         c = False  # default is False, to change to True: ./script.py -c
-        d: bool = Arg(bool_flag=False)  # to change - specify value after flag: `-d 1` or `-d false` or ...
+        d: bool = Opt(bool_flag=False)  # to change - specify value after flag: `-d 1` or `-d false` or ...
 
     args = parse_args(Args, '-d 0')
     assert args.a is None
@@ -93,7 +93,7 @@ lists
         a = []  # default = [], type = str, nargs = *
         b: List[int] = []  # default = [], type = int, nargs = *
         c = [1.0]  # default = [], type = float, nargs = +
-        d: List[int] = Arg(default=[], nargs='+')  # default = [], type = int, nargs = +
+        d: List[int] = Opt(default=[], nargs='+')  # default = [], type = int, nargs = +
 
     args = parse_args(Args, '-a "foo bar" "baz"')
     assert args.a == ["foo bar", "baz"]
@@ -109,8 +109,8 @@ positional arguments
 .. code-block:: python
 
     class Args:
-        a: float = PosArg()
-        b: str = PosArg()
+        a: float = Arg()
+        b: str = Arg()
 
     args = parse_args(Args, '5 "foo bar"')
     assert args.a == 5
@@ -122,8 +122,8 @@ one dash
 .. code-block:: python
 
     class Args:
-        aaa: int = Arg(one_dash=False)
-        bbb: int = Arg(one_dash=True)
+        aaa: int = Opt(one_dash=False)
+        bbb: int = Opt(one_dash=True)
 
     args = parse_args(Args, '--aaa 42 -bbb 42')
     assert args.aaa == 42
@@ -136,9 +136,9 @@ argparse params
 .. code-block:: python
 
     class Args:
-        a = Arg(help="foo bar")  # with additional help message
-        b = Arg(action='count')
-        c: List[int] = Arg(action='append')
+        a = Opt(help="foo bar")  # with additional help message
+        b = Opt(action='count')
+        c: List[int] = Opt(action='append')
 
     args = parse_args(Args, '-a foo -bbb -c 1 -c 2')
     assert args.a == 'foo'
@@ -152,7 +152,7 @@ Actions
 .. code-block:: python
 
     class Args:
-        a = Arg(action='store_const', default='42', const=42)
+        a = Opt(action='store_const', default='42', const=42)
 
     args = parse_args(Args, '')
     assert args.a == '42'
@@ -162,7 +162,7 @@ Actions
 .. code-block:: python
 
     class Args:
-        a: List[int] = Arg(action='append', default=[])
+        a: List[int] = Opt(action='append', default=[])
 
     args = parse_args(Args, '-a 1')
     assert args.a == [1]
@@ -173,7 +173,7 @@ Actions
 .. code-block:: python
 
     class Args:
-        verbose: int = Arg(action='count', default=0)
+        verbose: int = Opt(action='count', default=0)
 
     args = parse_args(Args, '')
     assert args.verbose == 0
@@ -189,7 +189,7 @@ Reusability
 
     class CommonArgs:
         value: int
-        verbose = Arg(action='count', default=0)
+        verbose = Opt(action='count', default=0)
         model_path = 'foo.pkl'
 
     class Args1(CommonArgs):
