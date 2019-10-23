@@ -10,7 +10,7 @@ argcomplete_desc = "Add auto completion for scripts. Ex: eval \"$(python -m args
 
 
 class AutoArgs:
-    executables: List[str] = argser.PosArg(
+    executables: List[str] = argser.Arg(
         default=[],
         help=(
             "List of python scripts to add autocompletes to. If none is specified then argser "
@@ -18,9 +18,9 @@ class AutoArgs:
         )
     )
     use_defaults = True
-    complete_arguments = argser.Arg(nargs=argparse.REMAINDER)
-    shell: str = argser.Arg(choices=('bash', 'tcsh', 'fish'), default='bash')
-    mark: bool = argser.Arg(default=True, help="Add only scripts with PYTHON_ARGCOMPLETE_OK mark.")
+    complete_arguments = argser.Opt(nargs=argparse.REMAINDER)
+    shell: str = argser.Opt(choices=('bash', 'tcsh', 'fish'), default='bash')
+    mark: bool = argser.Opt(default=True, help="Add only scripts with PYTHON_ARGCOMPLETE_OK mark.")
 
 
 def _find_scripts(path: str, mark=True):

@@ -7,7 +7,7 @@ from typing import Any, List, Type
 
 from argser.consts import Args, SUB_COMMAND_DEST_FMT, SUB_COMMAND_MARK
 from argser.display import print_args, stringify
-from argser.fields import Arg
+from argser.fields import Opt
 from argser.logging import VERBOSE
 from argser.utils import ColoredHelpFormatter, is_list_like_type
 
@@ -92,7 +92,7 @@ def _read_args(
                 one_dash=one_dash,
             )
             continue
-        if isinstance(value, Arg):
+        if isinstance(value, Opt):
             typ, nargs = _get_type_and_nargs(ann, key, value.default)
             value.dest = value.dest or key
             value.type = value.type or typ
@@ -107,7 +107,7 @@ def _read_args(
             continue
         typ, nargs = _get_type_and_nargs(ann, key, value)
         args.append(
-            Arg(
+            Opt(
                 dest=key,
                 type=typ,
                 default=value,
@@ -121,7 +121,7 @@ def _read_args(
     return args_cls, args, sub_commands
 
 
-def _make_parser(name: str, args: List[Arg], sub_commands: dict, formatter_class=HelpFormatter, **kwargs):
+def _make_parser(name: str, args: List[Opt], sub_commands: dict, formatter_class=HelpFormatter, **kwargs):
     logger.log(VERBOSE, f"parser {name}:\n - {args}\n - {sub_commands}")
     parser = ArgumentParser(formatter_class=formatter_class, **kwargs)
     for arg in args:
@@ -141,7 +141,7 @@ def _make_parser(name: str, args: List[Arg], sub_commands: dict, formatter_class
     return parser
 
 
-def _set_values(parser_name: str, res: Args, namespace: Namespace, args: List[Arg], sub_commands: dict):
+def _set_values(parser_name: str, res: Args, namespace: Namespace, args: List[Opt], sub_commands: dict):
     logger.log(VERBOSE, f'setting values for: {res}')
     for arg in args:
         setattr(res, arg.dest, namespace.__dict__.get(arg.dest))
@@ -163,7 +163,7 @@ def _make_shortcut(name: str):
     return ''.join([p[0] for p in parts if len(p) > 0])
 
 
-def _make_shortcuts(args: List[Arg]):
+def _make_shortcuts(args: List[Opt]):
     """
     Add shortcuts to arguments without defined aliases.
     todo: deal with duplicated names
@@ -182,7 +182,7 @@ def _make_shortcuts(args: List[Arg]):
         arg.aliases = (a,)
 
 
-def _make_shortcuts_sub_wise(args: List[Arg], sub_commands: dict):
+def _make_shortcuts_sub_wise(args: List[Opt], sub_commands: dict):
     _make_shortcuts(args)
     for name, (args_cls, args, sub_p) in sub_commands.items():
         _make_shortcuts_sub_wise(args, sub_p)

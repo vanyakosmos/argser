@@ -4,8 +4,8 @@ from typing import Iterable
 from argser.utils import str2bool
 
 
-class Arg:
-    """Keywords Argument"""
+class Opt:
+    """Option"""
     def __init__(
         self,
         dest: str = None,
@@ -133,7 +133,7 @@ class Arg:
         return action
 
 
-class PosArg(Arg):
+class Arg(Opt):
     """Positional Argument"""
     def __init__(self, **kwargs):
         kwargs.update(bool_flag=False)
