@@ -107,16 +107,7 @@ class ColoredHelpFormatter(HelpFormatter):
         action.help = self.format_action_help(action)
         # noinspection PyProtectedMember
         text = super()._format_action(action)
-        lines = text.splitlines()
-        if len(lines) > 1:
-            lines[0] = self.invoc_color(lines[0])
-            text = '\n'.join(lines)
-            return f"{text}\n"
-        elif len(lines) == 1:
-            line = lines[0]
-            w = min(self._action_max_length, self._max_help_position)
-            invoc = line[:w]
-            invoc = self.invoc_color(invoc)
-            help_text = line[w:]
-            return f"{invoc}{help_text}\n"
-        return text  # pragma: no cover
+        invoc = self._format_action_invocation(action)
+        s = len(invoc) + self._current_indent
+        text = self.invoc_color(text[:s]) + text[s:]
+        return text
