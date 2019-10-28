@@ -5,6 +5,7 @@ from functools import partial
 
 from argser.consts import FALSE_VALUES, TRUE_VALUES
 
+BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE = range(8)
 RE_INV_CODES = re.compile(r"\x1b\[\d+[;\d]*m|\x1b\[\d*;\d*;\d*m")
 
 
@@ -13,8 +14,10 @@ def vlen(s: str):
     Visible width of a printed string. ANSI color codes are removed.
     Short version of private function from tabulate. Copied just in case.
 
-    >>> vlen('\x1b[31mhello\x1b[0m'), vlen("world")
-    (5, 5)
+    >>> vlen("world")
+    5
+    >>> vlen('\x1b[31mhello\x1b[0m')
+    5
     """
     return len(RE_INV_CODES.sub("", s))
 
@@ -35,27 +38,26 @@ def is_list_like_type(t):
     return list in getattr(t, '__orig_bases__', []) or orig and issubclass(list, orig)
 
 
-def add_color(text, fg='', bg='', style=''):  # pragma: no cover
+def add_color(text, fg=None):  # pragma: no cover
     """
     :param text:
     :param fg: [30, 38)
-    :param bg: [40, 48)
-    :param style: [0, 8)
-    :return:
+    :return: text with ascii color
+
+    >>> assert add_color('text', 1) == '\x1b[31mtext\x1b[0m'
     """
-    if fg == bg == style == '':
+    if fg is None:
         return text
-    if text is None or text == '':
+    if not text:
         text = ' '
-    format = ';'.join([str(style), str(fg), str(bg)])
-    return f'\x1b[{format}m{text}\x1b[0m'
+    return f'\x1b[{30 + fg}m{text}\x1b[0m'
 
 
 class colors:
-    red = partial(add_color, fg=31)
-    green = partial(add_color, fg=32)
-    yellow = partial(add_color, fg=33)
-    blue = partial(add_color, fg=34)
+    red = partial(add_color, fg=RED)
+    green = partial(add_color, fg=GREEN)
+    yellow = partial(add_color, fg=YELLOW)
+    blue = partial(add_color, fg=BLUE)
     no = partial(lambda x: x)  # partial will prevent 'self' injection when called from ColoredHelpFormatter
 
 

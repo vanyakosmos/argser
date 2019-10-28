@@ -191,9 +191,18 @@ def _make_shortcuts_sub_wise(args: List[Opt], sub_commands: dict):
 
 def sub_command(args_cls: Type[Args], **kwargs) -> Args:
     """
+    Add sub-command to the parser.
+
     :param args_cls: data holder
     :param kwargs: additional parser kwargs
-    :return:
+    :return: instance of :attr:`args_cls` with added metadata
+
+    >>> class Args:
+    ...     class Sub:
+    ...         a = 1
+    ...     sub = sub_command(Sub)
+    >>> args = parse_args(Args, 'sub -a 2')
+    >>> assert args.sub.a == 2
     """
     setattr(args_cls, '__str__', stringify)
     setattr(args_cls, '__repr__', stringify)
@@ -259,6 +268,14 @@ def parse_args(
         gap: string, space between tables/columns
     :param argcomplete_kwargs: argcomplete kwargs
     :param kwargs: params for tabulate and parser - tabulate_ARG=VAL or parser_ARG=VAL
+    :return: instance of :attr:`args_cls` with populated attributed based of command line arguments.
+
+    >>> class Args:
+    ...     a: int
+    ...     b = 4.5
+    ...     c = True
+    >>> args = parse_args(Args, '-a 1 -b 2.2 --no-c')
+    >>> assert args.a == 1 and args.b == 2.2 and args.c is False
     """
     tabulate_kwargs = tabulate_kwargs or {}
     _add_prefixed_key(kwargs, tabulate_kwargs, 'tabulate_')

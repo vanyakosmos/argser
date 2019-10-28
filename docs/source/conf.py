@@ -1,22 +1,10 @@
-# Configuration file for the Sphinx documentation builder.
-#
-# This file only contains a selection of the most common options. For a full
-# list see the documentation:
-# https://www.sphinx-doc.org/en/master/usage/configuration.html
-
-# -- Path setup --------------------------------------------------------------
-
-# If extensions (or modules to document with autodoc) are in another directory,
-# add these directories to sys.path here. If the directory is relative to the
-# documentation root, use os.path.abspath to make it absolute, like shown here.
-#
-import os
 import re
 import sys
+from pathlib import Path
 
-# sys.path.insert(0, os.path.abspath(os.pardir))
-root = os.path.abspath(os.path.join(os.path.pardir, os.path.pardir))
-sys.path.insert(0, root)
+root = Path(__file__).parents[2]
+package_dir = root / 'argser'
+sys.path.insert(0, str(package_dir))
 
 # -- Project information -----------------------------------------------------
 
@@ -25,7 +13,7 @@ copyright = '2019, Bachynin Ivan'
 author = 'Bachynin Ivan'
 
 # The full version, including alpha/beta/rc tags
-with open(os.path.join(root, 'pyproject.toml'), 'r') as f:
+with open(root / 'pyproject.toml', 'r') as f:
     version = re.search(r'version\s+=\s+"(.*)"', f.read(), flags=re.MULTILINE).group(1)
 
 # The full version, including alpha/beta/rc tags.
@@ -41,6 +29,7 @@ master_doc = 'index'
 # ones.
 extensions = [
     'sphinx.ext.autodoc',
+    'sphinx.ext.doctest',
     'sphinxcontrib.apidoc',
     'm2r',
 ]
@@ -75,13 +64,11 @@ html_context = {
 
 # -- Extensions --------------------------------------------------------------
 
-apidoc_module_dir = root
+apidoc_module_dir = str(package_dir)
 apidoc_output_dir = 'modules'
 apidoc_excluded_paths = [
-    'argser/consts.py',
-    'argser/logging.py',
-    'tests',
-    './*.py',
+    'consts.py',
+    'logging.py',
 ]
 apidoc_separate_modules = True
 apidoc_toc_file = False
