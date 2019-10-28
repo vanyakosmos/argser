@@ -1,7 +1,7 @@
 # argser
 
 [![PyPI version](https://badge.fury.io/py/argser.svg)](http://badge.fury.io/py/argser)
-[![Build Status](https://github.com/vanyakosmos/argser/workflows/test-publish/badge.svg)](https://github.com/vanyakosmos/argser/actions?workflow=build)
+[![Build Status](https://github.com/vanyakosmos/argser/workflows/test-publish/badge.svg)](https://github.com/vanyakosmos/argser/actions?workflow=test-publish)
 [![Coverage](https://codecov.io/gh/vanyakosmos/argser/branch/master/graph/badge.svg)](https://codecov.io/gh/vanyakosmos/argser)
 [![License](https://img.shields.io/github/license/mashape/apistatus.svg)](https://pypi.python.org/pypi/argser/)
 [![Downloads](https://pepy.tech/badge/argser)](https://pepy.tech/project/argser)
@@ -9,11 +9,12 @@
 [GitHub](https://github.com/vanyakosmos/argser) | 
 [PyPI](https://pypi.org/project/argser/) | 
 [Docs](https://argser.readthedocs.io/en/latest) | 
-[Examples](https://argser.readthedocs.io/en/latest/examples.html)
+[Examples](https://argser.readthedocs.io/en/latest/examples.html) | 
+[Changelog](CHANGELOG.md)
 
 Arguments parsing without boilerplate.
 
-Features:
+## Features:
 - arguments and type hints in IDE
 - easy nested sub-commands
 - sane defaults for arguments' params (ie if default of arg is 3 then type should be int, or when annotation/type/default is `bool` then generate 2 arguments: for true value `--arg` and for false `--no-arg`, ...)
@@ -23,9 +24,8 @@ Features:
 - auto shortcuts generation: `--verbose -> -v, --foo_bar -> --fb`
 - [auto completion](https://argser.readthedocs.io/en/latest/examples.html#auto-completion) in shell (tnx to [argcomplete](https://argcomplete.readthedocs.io/en/latest/))
 
-------
 
-## install
+## Installation
 
 ```text
 pip install argser
@@ -34,7 +34,8 @@ pip install argser[argcomplete]  # for shell auto completion
 pip install argser[all]
 ```
 
-## simple example
+
+## Simple example
 
 ```python
 from argser import parse_args
@@ -84,7 +85,8 @@ optional arguments:
                         int, default: 1.
 ```
 
-## sub commands
+
+## Sub-commands
 
 ```python
 from argser import parse_args, sub_command
