@@ -64,7 +64,7 @@ def test_help():
 
         positional arguments:
             {sub}
-                sub                 sub1 help
+                sub                 str. sub1 help
 
         optional arguments:
             -h, --help              show this help message and exit
@@ -86,4 +86,4 @@ def test_help():
         """
     )
 
-    assert help_msg.strip('\n ') == real_help.strip('\n ')
+    assert real_help.strip('\n ') == help_msg.strip('\n ')

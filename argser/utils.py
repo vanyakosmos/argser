@@ -1,7 +1,11 @@
+import argparse
+import re
 from argparse import Action, ArgumentTypeError, HelpFormatter, SUPPRESS
 from functools import partial
 
-from argser.consts import FALSE_VALUES, RE_INV_CODES, TRUE_VALUES
+from argser.consts import FALSE_VALUES, TRUE_VALUES
+
+RE_INV_CODES = re.compile(r"\x1b\[\d+[;\d]*m|\x1b\[\d*;\d*;\d*m")
 
 
 def vlen(s: str):
@@ -74,6 +78,9 @@ class ColoredHelpFormatter(HelpFormatter):
         return super().add_usage(usage, actions, groups, prefix)
 
     def format_default_help(self, action: Action):
+        # skip if current action is sub-parser
+        if action.nargs == argparse.PARSER:
+            return
         if action.type is None and isinstance(action.const, bool):
             typ = bool
         elif action.type is None and action.default is not None:
@@ -83,7 +90,7 @@ class ColoredHelpFormatter(HelpFormatter):
         else:
             typ = action.type
         if typ is None and action.default is None:
-            return
+            typ = str
         typ = getattr(typ, '__name__', '-')
         if typ == 'str2bool':
             typ = 'bool'
@@ -91,7 +98,10 @@ class ColoredHelpFormatter(HelpFormatter):
             typ = f"List[{typ}]"
         typ = self.type_color(typ)
         default = self.default_color(repr(action.default))
-        return f"{typ}, default: {default}"
+        res = str(typ)
+        if action.option_strings or action.default is not None:
+            res += f", default: {default}"
+        return res
 
     def format_action_help(self, action):
         if action.default == SUPPRESS:
