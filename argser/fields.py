@@ -1,7 +1,11 @@
+import logging
 from argparse import ArgumentParser, SUPPRESS
 from typing import Iterable
 
+from argser.logging import VERBOSE
 from argser.utils import str2bool
+
+logger = logging.getLogger(__name__)
 
 
 class Opt:
@@ -98,6 +102,7 @@ class Opt:
         )
         params.update(**kwargs)
         params.update(**self.extra)
+        logger.log(VERBOSE, params)
         for key in exclude:
             params.pop(key)
         return {k: v for k, v in params.items() if v is not None}
@@ -116,6 +121,7 @@ class Opt:
         return parser.add_argument(*self.keys(), **params)
 
     def inject(self, parser: ArgumentParser):
+        logger.log(VERBOSE, f"adding {self.dest} to the parser")
         if self.type is bool:
             action = self.inject_bool(parser)
         else:

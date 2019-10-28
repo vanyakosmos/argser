@@ -7,7 +7,7 @@ license = "MIT"
 readme = "README.md"
 homepage = "https://github.com/vanyakosmos/argser"
 repository = "https://github.com/vanyakosmos/argser"
-documentation = "https://argser.readthedocs.io/en/latest"
+documentation = "https://argser.readthedocs.io/en/stable"
 keywords = ['flags', 'argparse']
 classifiers = [
     'Development Status :: 3 - Alpha',

@@ -55,7 +55,8 @@ def _get_fields(cls: Type[Args], ann: dict):
 
 def _get_type_and_nargs(ann: dict, field_name: str, default):
     # get type from annotation or from default value or fallback to str
-    typ = ann.get(field_name, str if default is None else type(default))
+    default_type = None if default is None else type(default)
+    typ = ann.get(field_name, default_type)
     logger.log(VERBOSE, f"init type {typ}, default: {default}")
     typ, nargs = _get_nargs(typ, default)
     logger.log(VERBOSE, f"type {typ}, nargs {nargs!r}")
@@ -97,7 +98,7 @@ def _read_args(
             value.dest = value.dest or key
             value.type = value.type or typ
             if value.action != 'append':
-                value.nargs = value.nargs or nargs
+                value.nargs = nargs if value.nargs is None else value.nargs
             if override:
                 value.bool_flag = bool_flag
                 value.one_dash = one_dash

@@ -74,6 +74,37 @@ def test_complex_args():
     assert args.e == [True, False]
 
 
+def test_nargs():
+    class Args:
+        a: str = Opt()
+        # b = Opt(nargs=0)  # can't be used with default action
+        c = Opt(nargs=1)
+        d = Opt(nargs=3)
+        e = Opt(nargs='?')
+        f = Opt(nargs='*', required=True)
+        g = Opt(nargs='+', required=True)
+
+    with pytest.raises(SystemExit):
+        parse_args(Args, '')  # g is required
+
+    with pytest.raises(SystemExit):
+        parse_args(Args, '-f 1')  # g is required
+
+    with pytest.raises(SystemExit):
+        parse_args(Args, '-g 1 -c 1 2')
+
+    with pytest.raises(SystemExit):
+        parse_args(Args, '-g 1 -d 1 2 3 4')
+
+    args = parse_args(Args, '-a 1 -c 2 -d 3 4 5 -e 6 -f -g 9 10')
+    assert args.a == '1'
+    assert args.c == ['2']
+    assert args.d == ['3', '4', '5']
+    assert args.e == '6'
+    assert args.f == []
+    assert args.g == ['9', '10']
+
+
 def test_positional_args():
     class Args:
         a = 1
