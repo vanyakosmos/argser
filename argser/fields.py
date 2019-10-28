@@ -19,7 +19,7 @@ class Opt:
         aliases: Iterable[str] = (),
         help=None,
         metavar=None,
-        action='store',
+        action=None,
         # argcomplete
         completer=None,
         # extra
