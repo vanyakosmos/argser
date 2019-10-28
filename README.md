@@ -86,6 +86,18 @@ optional arguments:
 ```
 
 
+## Get arguments from function
+
+```python
+import argser
+
+def foo(a, b: int, c=1.2):
+    return [a, b, c]
+
+assert argser.call(foo, '1 2 -c 3.4') == ['1', 2, 3.4]
+```
+
+
 ## Sub-commands
 
 ```python
@@ -156,4 +168,23 @@ class Args:
     sub1 = sub_command(Sub1)
 
 args = parse_args(Args, '-a 1 sub1 -b 2 sub2 -c 3 sub3 -d 4')
+```
+
+
+### Sub-commands from functions
+
+```python
+import argser
+subs = argser.SubCommands()
+
+@subs.add
+def foo():
+    return 'foo'
+
+@subs.add(description="foo bar")  # with additional arguments for sub-parser
+def bar(a, b=1):
+    return [a, b]
+
+assert subs.parse('foo') == 'foo'
+assert subs.parse('bar 1 -b 2') == ['1', 2]
 ```

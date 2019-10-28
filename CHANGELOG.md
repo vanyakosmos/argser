@@ -5,6 +5,14 @@ Versions follow [Semantic Versioning](https://semver.org) (`<major>.<minor>.<pat
 **But**. Currently project is in alpha stage (`0.0.*`) and any changes can potentially break existing code.
 
 
+## 0.0.12
+
+### Features
+
+- build parser based on function arguments
+- build parser with sub-commands using multiple functions
+
+
 ## 0.0.11
 
 ### Breaking changes

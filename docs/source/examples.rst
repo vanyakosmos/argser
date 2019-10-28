@@ -251,6 +251,25 @@ Or as decorator:
 In examples above ``a`` (implicit string) and ``b`` (int) are positional argument because they don't have default values.
 
 
+Multiple sub-commands:
+
+.. doctest::
+
+    >>> from argser import SubCommands
+    >>> subs = SubCommands()
+
+    >>> @subs.add(description="foo bar")
+    ... def foo(): return 'foo'
+
+    >>> @subs.add
+    ... def bar(a, b: int): return [a, b]
+
+    >>> subs.parse('foo')
+    'foo'
+    >>> subs.parse('bar 1 2')
+    ['1', 2]
+
+
 Auto completion
 ***************
 

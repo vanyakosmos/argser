@@ -2,7 +2,7 @@ import inspect
 
 from types import FunctionType
 from argser.fields import Arg, Opt
-from argser.parser import parse_args, _get_type_and_nargs
+from argser.parser import parse_args, _get_type_and_nargs, sub_command
 
 
 def _get_default_args(func):
@@ -21,15 +21,18 @@ def _make_argument(name, annotations: dict, defaults: dict):
     return arg
 
 
-def _call(func: FunctionType, *parser_args, **parser_kwargs):
+def _make_args_cls(func: FunctionType):
     ann = func.__annotations__
     args = func.__code__.co_varnames
     args = args[:func.__code__.co_argcount]  # arguments excluding *args, **kwargs and kw only args
     defaults = _get_default_args(func)
-
-    parser_kwargs.setdefault('parser_prog', func.__name__)
-
     Args = type('Args', (), {arg: _make_argument(arg, ann, defaults) for arg in args})
+    return Args
+
+
+def _call(func: FunctionType, *parser_args, **parser_kwargs):
+    Args = _make_args_cls(func)
+    parser_kwargs.setdefault('parser_prog', func.__name__)
     args = parse_args(Args, *parser_args, **parser_kwargs)
     return func(**args.__dict__)
 
@@ -62,4 +65,54 @@ def call(func=None, *args, **kwargs):
     if isinstance(func, FunctionType):
         return _call(func, *args, **kwargs)
     args = (func,) + args
-    return lambda f: _call(f, *args, **kwargs)
+
+    def dec(f):
+        return _call(f, *args, **kwargs)
+
+    return dec
+
+
+class SubCommands:
+    """
+    Allows to create sub-commands from multiple functions.
+
+    >>> subs = SubCommands()
+
+    >>> @subs.add(description="foo bar")
+    ... def foo():
+    ...     return 'foo'
+
+    >>> @subs.add
+    ... def bar(a, b: int):
+    ...     return [a, b]
+
+    >>> subs.parse('foo')
+    'foo'
+    >>> subs.parse('bar 1 2')
+    ['1', 2]
+    """
+    def __init__(self):
+        self.commands = {}
+        self.functions = {}
+
+    def _add(self, func: FunctionType, **kwargs):
+        self.commands[func.__name__] = sub_command(_make_args_cls(func), **kwargs)
+        self.functions[func.__name__] = func
+
+    def add(self, func=None, **kwargs):
+        """Use as ``@subs.add`` or ``@subs.add(...params...)``"""
+        if isinstance(func, FunctionType):
+            return self._add(func, **kwargs)
+
+        def dec(f):
+            return self._add(f, **kwargs)
+
+        return dec
+
+    def parse(self, *parser_args, **parser_kwargs):
+        Args = type('Args', (), {name: sub_cmd for name, sub_cmd in self.commands.items()})
+        args = parse_args(Args, *parser_args, **parser_kwargs)
+        for name in self.commands:
+            sub_args = getattr(args, name, None)
+            if sub_args is not None:
+                return self.functions[name](**sub_args.__dict__)

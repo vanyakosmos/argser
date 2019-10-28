@@ -463,28 +463,3 @@ def test_reusability():
     assert args.b == 5.5
     assert args.c == 'c'
     assert args.e == 'foo bar'
-
-
-def test_parse_function():
-    def foo(a, b: int, c=1.2):
-        return [a, b, c]
-
-    assert argser.call(foo, '1 2') == ['1', 2, 1.2]
-    assert argser.call(foo, '2 3 -c 4.4') == ['2', 3, 4.4]
-
-    def foo(a, b: List[int]):
-        return [a, b]
-
-    assert argser.call(foo, '1 2 3') == ['1', [2, 3]]
-
-
-def test_parse_function_decorator():
-    @argser.call('')
-    def foo(a=1, b='2'):
-        assert a == 1
-        assert b == '2'
-
-    @argser.call('-a 5 -b "foo bar"')
-    def foo(a=1, b='2'):
-        assert a == 5
-        assert b == 'foo bar'
