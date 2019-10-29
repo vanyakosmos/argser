@@ -1,3 +1,5 @@
+__version__ = "0.0.11"
+
 from argser.consts import FALSE_VALUES, TRUE_VALUES
 from argser.display import make_table, stringify
 from argser.fields import Arg, Opt

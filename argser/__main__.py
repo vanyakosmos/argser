@@ -1,9 +1,7 @@
 import argparse
 import glob
 import os
-import re
 import sys
-from pathlib import Path
 from typing import List
 
 import argser
@@ -77,15 +75,9 @@ def autocomplete(args: AutoArgs):
         print(f"- {file}", file=sys.stderr)
 
 
-def get_version():
-    pyproj = Path(__file__).parent.parent / 'pyproject.toml'
-    with open(pyproj, 'r') as f:
-        return re.search(r'version\s+=\s+"(.*)"', f.read(128), flags=re.MULTILINE).group(1)
-
-
 class Args:
     auto = argser.sub_command(AutoArgs, help=argcomplete_desc, description=argcomplete_desc)
-    version = argser.Opt(action='version', version=f'%(prog)s {get_version()}')
+    version = argser.Opt(action='version', version=f'%(prog)s {argser.__version__}')
 
 
 def main():
