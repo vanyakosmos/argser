@@ -438,6 +438,7 @@ def test_reusability():
         a: int
         b: float
         c = 'c'
+        g: bool = Opt(default=True, help="gg")
 
     class Args1(CommonArgs):
         a: str
@@ -451,15 +452,18 @@ def test_reusability():
     assert args.a == 1
     assert args.b == 2.2
     assert args.c == 'cc'
+    assert args.g is True
 
     args = parse_args(Args1, '-a 1 -b 4.4 -c 5 -d 2.2')
     assert args.a == '1'
     assert args.b == 4.4
     assert args.c == 5
     assert args.d == 2.2
+    assert args.g is True
 
-    args = parse_args(Args2, '-a 1 -b 5.5 -e "foo bar"')
+    args = parse_args(Args2, '-a 1 -b 5.5 -e "foo bar" --no-g')
     assert args.a == 1
     assert args.b == 5.5
     assert args.c == 'c'
     assert args.e == 'foo bar'
+    assert args.g is False

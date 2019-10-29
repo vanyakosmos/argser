@@ -36,17 +36,20 @@ def _get_nargs(typ, default):
     return typ, None
 
 
-def _get_fields(cls: Type[Args], ann: dict):
-    fields_with_value = cls.__dict__
+def _get_fields(cls: Type[Args]):
+    ann = getattr(cls, '__annotations__', {})
+    fields_with_value = {
+        key: value
+        for key, value in cls.__dict__.items()
+        if not key.startswith('__') and not isinstance(value, type)  # skip built-ins and inner classes
+    }
     fields = {k: None for k in ann if k not in fields_with_value}
-    for key, value in fields_with_value.items():
-        # skip built-ins and inner classes
-        if key.startswith('__') or isinstance(value, type):
-            continue
-        fields[key] = value
+    fields.update(**fields_with_value)
     # get fields from bases classes
     for base in cls.__bases__:
-        for name, value in _get_fields(base, ann).items():
+        if base is object:
+            continue
+        for name, value in _get_fields(base).items():
             # update without touching redefined values in inherited classes
             if name not in fields:
                 fields[name] = value
@@ -64,7 +67,7 @@ def _get_type_and_nargs(ann: dict, field_name: str, default):
 
 
 def _collect_annotations(cls: type):
-    ann = getattr(cls, '__annotations__', {})
+    ann = getattr(cls, '__annotations__', {}).copy()  # don't modify class annotation
     for base in cls.__bases__:
         for name, typ in _collect_annotations(base).items():
             # update without touching redefined values in inherited classes
@@ -83,7 +86,7 @@ def _read_args(
     args = []
     sub_commands = {}
     ann = _collect_annotations(args_cls)
-    fields = _get_fields(args_cls, ann)
+    fields = _get_fields(args_cls)
     for key, value in fields.items():  # type: str, Any
         logger.log(VERBOSE, f"reading {key!r}")
         if hasattr(value, SUB_COMMAND_MARK):
