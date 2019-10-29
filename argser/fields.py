@@ -155,4 +155,4 @@ class Arg(Opt):
         return super().params(exclude=exclude, **kwargs)
 
     def keys(self, prefix=None):
-        return [self.dest]
+        return [self.dest] if self.dest else []

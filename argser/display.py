@@ -143,15 +143,27 @@ def make_table(args: Args, preset=None, cols='sub-auto', gap='   ', colorize=Tru
 
 
 def print_args(args: Args, variant=None, print_fn=None, colorize=True, shorten=False, **kwargs):
+    """
+    Pretty print out data from :attr:`args`.
+
+    :param args: some object with attributes
+    :param variant:
+        if truthy value - print arguments in one line
+        if 'table' - print arguments as table
+    :param print_fn:
+    :param colorize: add colors to the help message and arguments printing
+    :param shorten: shorten long text (eg long default value)
+    :param kwargs: additional kwargs for tabulate + some custom fields:
+        cols: number of columns. Can be 'auto' - len(args)/N, int - just number of columns,
+        'sub' / 'sub-auto' / 'sub-INT' - split by sub-commands,
+        gap: string, space between tables/columns
+    """
     if variant == 'table':
         s = make_table(args, colorize=colorize, shorten=shorten, **kwargs)
-    elif variant:
+    else:
         if colorize:
             s = stringify_colored(args, shorten)
         else:
             s = stringify(args, shorten)
-    else:
-        s = None
-    if s:
-        print_fn = print_fn or print
-        print_fn(s)
+    print_fn = print_fn or print
+    print_fn(s)

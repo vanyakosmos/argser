@@ -26,7 +26,10 @@ def test_cli():
 
 
 def test_help():
-    class Args:
+    class Base:
+        bb: bool = Opt(default=True, help="foo bar")
+
+    class Args(Base):
         b: bool
         b1 = True
         l0 = []
@@ -56,10 +59,11 @@ def test_help():
     args_cls, args, sub_commands = _read_args(Args)
     parser = _make_parser('root', args, sub_commands, formatter_class=HelpFormatter, prog='prog')
     help_msg = parser.format_help()
+    print(help_msg)
     real_help = textwrap.dedent(
         """
         usage: prog [-h] [-b] [--no-b] [--b1] [--no-b1] [--l0 [L [L ...]]] [--l1 L [L ...]] [--l2 [L [L ...]]] [-f F] [-c N]
-                    [--dddd D] [--foo-bar-baaaaaaaaz F] [-v] [--v1] [--v2] [--ap A]
+                    [--dddd D] [--foo-bar-baaaaaaaaz F] [-v] [--v1] [--v2] [--ap A] [--bb] [--no-bb]
                     {sub} ...
 
         positional arguments:
@@ -83,6 +87,8 @@ def test_help():
             --v1                    int, default: None. bar
             --v2                    int, default: None. foo
             --ap A                  List[str], default: None
+            --bb                    bool, default: True. foo bar
+            --no-bb
         """
     )
 

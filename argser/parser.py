@@ -226,68 +226,39 @@ def _setup_argcomplete(parser, **kwargs):
         logger.log(VERBOSE, "argcomplete is not installed")
 
 
-def parse_args(
+def make_parser(
     args_cls: Type[Args],
-    args=None,
-    show=None,
-    print_fn=None,
     colorize=True,
-    shorten=False,
     make_shortcuts=True,
     replace_underscores=True,
     bool_flag=True,
     one_dash=False,
     override=False,
     parser_kwargs=None,
-    tabulate_kwargs=None,
     argcomplete_kwargs=None,
     **kwargs,
-) -> Args:
+):
     """
-    Parse arguments from string or command line and return populated instance of `args_cls`.
+    Create arguments parser based on :attr:`args_cls`.
 
     :param args_cls: class with defined arguments
-    :param args: arguments to parse. Either string or list of strings or None (to read from sys.args)
-    :param show:
-        if True - print arguments in one line
-        if 'table' - print arguments as table
-    :param print_fn:
     :param colorize: add colors to the help message and arguments printing
-    :param shorten: shorten long text (eg long default value)
-    :param make_shortcuts: make short version of arguments: --abc -> -a, --abc_def -> --ad
+    :param make_shortcuts: make short version of arguments: ``--abc -> -a``, ``--abc_def -> --ad``
     :param replace_underscores: replace underscores in argument names with dashes
     :param bool_flag:
-        if True then read bool from argument flag: `--arg` is True, `--no-arg` is False,
+        if True then read bool from argument flag: ``--arg`` is True, ``--no-arg`` is False,
         otherwise check if arg value and truthy or falsy: `--arg 1` is True `--arg no` is False
-    :param one_dash: use one dash for long names: `-name` instead of `--name`
+    :param one_dash: use one dash for long names: `-`name`` instead of ``--name``
     :param override: override values above on Arg's
     :param parser_kwargs: root parser kwargs
-    :param tabulate_kwargs: tabulate additional kwargs + some custom fields:
-        cols: number of columns. Can be 'auto' - len(args)/N, int - just number of columns,
-        'sub' / 'sub-auto' / 'sub-INT' - split by sub-commands,
-        gap: string, space between tables/columns
     :param argcomplete_kwargs: argcomplete kwargs
-    :param kwargs: params for tabulate and parser - tabulate_ARG=VAL or parser_ARG=VAL
-    :return: instance of :attr:`args_cls` with populated attributed based of command line arguments.
-
-    >>> class Args:
-    ...     a: int
-    ...     b = 4.5
-    ...     c = True
-    >>> args = parse_args(Args, '-a 1 -b 2.2 --no-c')
-    >>> assert args.a == 1 and args.b == 2.2 and args.c is False
+    :param kwargs: additional params for parser or argcomplete, should be prefixed with target name
+    :return: instance of ArgumentParser and tuple with options (main_options, sub_command_options)
     """
-    tabulate_kwargs = tabulate_kwargs or {}
-    _add_prefixed_key(kwargs, tabulate_kwargs, 'tabulate_')
     parser_kwargs = parser_kwargs or {}
     _add_prefixed_key(kwargs, parser_kwargs, 'parser_')
     argcomplete_kwargs = argcomplete_kwargs or {}
     _add_prefixed_key(kwargs, argcomplete_kwargs, 'argcomplete_')
-
-    if isinstance(args, str):
-        args_to_parse = shlex.split(args)
-    else:
-        args_to_parse = args
 
     args_cls, args, sub_commands = _read_args(
         args_cls,
@@ -302,12 +273,72 @@ def parse_args(
         parser_kwargs.setdefault('formatter_class', ColoredHelpFormatter)
     parser = _make_parser('root', args, sub_commands, **parser_kwargs)
     _setup_argcomplete(parser, **argcomplete_kwargs)
+    return parser, (args, sub_commands)
 
-    namespace = parser.parse_args(args_to_parse)
+
+def populate_holder(parser: ArgumentParser, args_cls: Type[Args], options: tuple, args=None):
+    """
+    Parse provided string or command line and populate :attr:`args_cls` with parsed values.
+
+    :param parser: generated parser
+    :param args_cls: arguments holder
+    :param options: tuple with root arguments and sub-command arguments
+    :param args: string to parse or ``None``
+    :return: instance of :attr:`args_cls` with populated fields.
+    """
+    if isinstance(args, str):
+        args = shlex.split(args)
+    namespace = parser.parse_args(args)
     logger.log(VERBOSE, namespace)
 
     result = sub_command(args_cls)
+    args, sub_commands = options
     _set_values('root', result, namespace, args, sub_commands)
+    return result
 
-    print_args(result, variant=show, print_fn=print_fn, colorize=colorize, shorten=shorten, **tabulate_kwargs)
+
+def parse_args(
+    args_cls,
+    args=None,
+    *,
+    show=None,
+    print_fn=None,
+    colorize=True,
+    shorten=False,
+    tabulate_kwargs=None,
+    **kwargs,
+):
+    """
+    Parse arguments from string or command line and return populated instance of `args_cls`.
+
+    :param args_cls: class with defined arguments
+    :param args: arguments to parse. Either string or list of strings or None (to read from sys.args)
+    :param show:
+        if 'table' - print arguments as table
+        if truthy value - print arguments in one line
+        if falsy value - don't print anything
+    :param print_fn:
+    :param colorize: add colors to the help message and arguments printing
+    :param shorten: shorten long text (eg long default value)
+    :param tabulate_kwargs: tabulate additional kwargs + some custom fields:
+        cols: number of columns. Can be 'auto' - len(args)/N, int - just number of columns,
+        'sub' / 'sub-auto' / 'sub-INT' - split by sub-commands,
+        gap: string, space between tables/columns
+    :param kwargs: parameters for parser generation.
+    :return: instance of :attr:`args_cls` with populated attributed based of command line arguments.
+
+    >>> class Args:
+    ...     a: int
+    ...     b = 4.5
+    ...     c = True
+    >>> args = parse_args(Args, '-a 1 -b 2.2 --no-c')
+    >>> assert args.a == 1 and args.b == 2.2 and args.c is False
+    """
+    parser, options = make_parser(args_cls, **kwargs)
+    result = populate_holder(parser, args_cls, options, args)
+
+    tabulate_kwargs = tabulate_kwargs or {}
+    _add_prefixed_key(kwargs, tabulate_kwargs, 'tabulate_')
+    if show:
+        print_args(result, variant=show, print_fn=print_fn, colorize=colorize, shorten=shorten, **tabulate_kwargs)
     return result
