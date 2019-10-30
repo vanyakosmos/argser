@@ -275,5 +275,8 @@ class Arg(Opt):
         exclude += ('dest',)
         return super()._params(exclude=exclude, **kwargs)
 
+    def make_metavar(self):
+        return None
+
     def make_options(self, *options: str, prefix=None, repl=None):
         return [self.dest]

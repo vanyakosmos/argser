@@ -1,7 +1,7 @@
 import logging
 import re
 import shlex
-from argparse import ArgumentParser, HelpFormatter, Namespace
+from argparse import ArgumentParser, Namespace
 from collections import defaultdict
 from typing import Any, List, Type
 
@@ -9,7 +9,7 @@ from argser.consts import Args, SUB_COMMAND_MARK
 from argser.display import print_args, stringify
 from argser.fields import Opt
 from argser.logging import VERBOSE
-from argser.utils import ColoredHelpFormatter
+from argser.formatters import ColoredHelpFormatter, HelpFormatter
 
 logger = logging.getLogger(__name__)
 
@@ -286,8 +286,8 @@ def make_parser(
     )
     if make_shortcuts:
         _make_shortcuts_sub_wise(args, sub_commands)
-    if colorize:
-        parser_kwargs.setdefault('formatter_class', ColoredHelpFormatter)
+    help_fmt_cls = ColoredHelpFormatter if colorize else HelpFormatter
+    parser_kwargs.setdefault('formatter_class', help_fmt_cls)
     parser = _make_parser('root', args, sub_commands, **parser_kwargs)
     _setup_argcomplete(parser, **argcomplete_kwargs)
     return parser, (args, sub_commands)
@@ -351,7 +351,7 @@ def parse_args(
     >>> args = parse_args(Args, '-a 1 -b 2.2 --no-c')
     >>> assert args.a == 1 and args.b == 2.2 and args.c is False
     """
-    parser, options = make_parser(args_cls, **kwargs)
+    parser, options = make_parser(args_cls, colorize=colorize, **kwargs)
     result = populate_holder(parser, args_cls, options, args)
 
     tabulate_kwargs = tabulate_kwargs or {}

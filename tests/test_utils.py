@@ -1,10 +1,11 @@
+import os
 import textwrap
 from typing import List
 
 from argser import Opt, sub_command
 # noinspection PyProtectedMember
 from argser.parser import _read_args, _make_parser
-from argser.utils import is_list_like_type, ColoredHelpFormatter, colors
+from argser.utils import is_list_like_type
 
 
 def test_is_list_typing():
@@ -26,6 +27,8 @@ def test_cli():
 
 
 def test_help():
+    os.environ['ANSI_COLORS_DISABLED'] = '1'  # disable colorization of help message
+
     class Base:
         bb: bool = Opt(default=True, help="foo bar")
 
@@ -50,14 +53,8 @@ def test_help():
 
         sub = sub_command(Sub, help='sub1 help')
 
-    class HelpFormatter(ColoredHelpFormatter):
-        header_color = colors.no
-        invoc_color = colors.no
-        type_color = colors.no
-        default_color = colors.no
-
     args_cls, args, sub_commands = _read_args(Args)
-    parser = _make_parser('root', args, sub_commands, formatter_class=HelpFormatter, prog='prog')
+    parser = _make_parser('root', args, sub_commands, prog='prog')
     help_msg = parser.format_help()
     print(help_msg)
     real_help = textwrap.dedent(

@@ -19,6 +19,7 @@ classifiers = [
 python = "^3.6"
 tabulate = {version = "^0.8.5", optional = true}
 argcomplete = {version = "^1.10", optional = true}
+termcolor = "^1.1"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
