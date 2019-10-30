@@ -82,7 +82,7 @@ def _read_args(
                 else:
                     raise ValueError(
                         f"invalid value for {key}. "
-                        f"Tuple structure should be: default [help | [constructor, help]]"
+                        f"Tuple structure should be: (default, help) or (default, constructor, help)"
                     )
             option = Opt(
                 dest=key,
@@ -110,10 +110,6 @@ def _join_names(*names: str):
 
 def _uwrap(*names: str):
     return f'__{_join_names(*names)}__'
-
-
-def _get_prefix_chars(args: List[Opt]):
-    return
 
 
 def _make_parser(name: str, args: List[Opt], sub_commands: dict, formatter_class=HelpFormatter, **kwargs):
@@ -261,11 +257,12 @@ def make_parser(
     :param args_cls: class with defined arguments
     :param colorize: add colors to the help message and arguments printing
     :param make_shortcuts: make short version of arguments: ``--abc -> -a``, ``--abc_def -> --ad``
-    :param replace_underscores: replace underscores in argument names with dashes
     :param bool_flag:
         if True then read bool from argument flag: ``--arg`` is True, ``--no-arg`` is False,
         otherwise check if arg value and truthy or falsy: `--arg 1` is True `--arg no` is False
-    :param one_dash: use one dash for long names: `-`name`` instead of ``--name``
+    :param prefix: default prefix before options. For ``--``: ``aaa -> --aaa``, ``b -> -b``
+    :param repl: auto-replace some char with another char in option names.
+           For ``('_', '-')``: ``lang_name -> lang-name``
     :param override: override values above on Arg's
     :param parser_kwargs: root parser kwargs
     :param argcomplete_kwargs: argcomplete kwargs

@@ -234,3 +234,14 @@ class TestGuessType:
         p = ArgumentParser()
         o.inject(p)
         assert p.parse_args('-o 123'.split()).o == [2, 3, 4]
+
+
+def test_pick_constructor():
+    def foo():
+        pass
+
+    assert Opt()._pick_constructor(1, 2, foo) is foo
+    assert Opt()._pick_constructor(1, foo, 2) is foo
+    assert Opt()._pick_constructor(None) is None
+    with pytest.raises(ValueError):
+        Opt()._pick_constructor(1, 2, 3)

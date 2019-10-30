@@ -30,7 +30,6 @@ class Opt:
         bool_flag=True,
         prefix='--',
         repl=('_', '-'),
-        guess=False,
         **kwargs,
     ):
         """
@@ -70,9 +69,6 @@ class Opt:
         self.constructor = self._pick_constructor(constructor)
         self.bool_flag = bool_flag
         self.extra = kwargs
-
-        if guess:
-            self.guess_type_and_nargs()
 
     def __str__(self):
         names = ', '.join(self.options) or '-'

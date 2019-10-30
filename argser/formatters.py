@@ -24,28 +24,10 @@ class HelpFormatter(argparse.HelpFormatter):
             prefix = colored('usage', self.header_color) + ': '
         return super().add_usage(usage, actions, groups, prefix)
 
-    def _get_type_in_hard_core_mode(self, action: Action):
-        if action.type is None and isinstance(action.const, bool):
-            typ = bool
-        elif action.type is None and action.default is not None:
-            typ = type(action.default)
-        elif action.__class__.__name__ == '_CountAction':
-            typ = int
-        else:
-            typ = action.type
-        if typ is None and action.default is None:
-            typ = str
-        typ = getattr(typ, '__name__', '-')
-        if typ == 'str2bool':
-            typ = 'bool'
-        if action.nargs in ('*', '+') or action.__class__.__name__ == '_AppendAction':
-            typ = f"List[{typ}]"
-        return typ
-
     def _get_type(self, action: Action):
         meta: Opt = getattr(action, '__meta', None)
         if not meta:
-            return self._get_type_in_hard_core_mode(action)
+            return
         if isinstance(meta.type, type):
             typ = getattr(meta.type, '__name__', '-')
         else:
@@ -58,6 +40,8 @@ class HelpFormatter(argparse.HelpFormatter):
         if action.nargs == argparse.PARSER:
             return
         typ = self._get_type(action)
+        if not typ:
+            return
         typ = colored(typ, self.type_color)
         default = colored(repr(action.default), self.default_color)
         res = str(typ)

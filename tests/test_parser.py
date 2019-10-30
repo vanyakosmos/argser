@@ -3,7 +3,6 @@ from typing import Callable, List
 
 import pytest
 
-import argser
 from argser import Arg, Opt, parse_args, sub_command
 # noinspection PyProtectedMember
 from argser.parser import _make_shortcuts_sub_wise, _read_args
@@ -500,3 +499,30 @@ def test_constructor():
     args = parse_args(Args, '-a 123 -b 5')
     assert args.a == [2, 3, 4]
     assert args.b == 7
+
+
+def test_quick_help():
+    class Args:
+        # default, help
+        a = 1, "help for a"
+        # with annotation parenthesis are required
+        b: str = (None, "help for b")
+        # default, constructor, help
+        c: float = (5., lambda x: float(x) * 2, "help for b")
+
+    args = parse_args(Args, '')
+    assert args.a == 1
+    assert args.b is None
+    assert args.c == pytest.approx(5.)
+
+    args = parse_args(Args, '-a 2 -b "foo bar" -c 10')
+    assert args.a == 2
+    assert args.b == 'foo bar'
+    assert args.c == pytest.approx(20.)
+
+    class Args:
+        e = ('foo', str, "help", "some trash no one asked for")
+
+    with pytest.raises(ValueError) as context:
+        parse_args(Args, '')
+    assert '(default, help) or (default, constructor, help)' in str(context.value)

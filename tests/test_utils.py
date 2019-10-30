@@ -65,7 +65,7 @@ def test_help():
 
         positional arguments:
             {sub}
-                sub                 str. sub1 help
+                sub                 sub1 help
 
         optional arguments:
             -h, --help              show this help message and exit
