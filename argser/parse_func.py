@@ -2,7 +2,7 @@ import inspect
 
 from types import FunctionType
 from argser.fields import Arg, Opt
-from argser.parser import parse_args, _get_type_and_nargs, sub_command
+from argser.parser import parse_args, sub_command
 
 
 def _get_default_args(func):
@@ -15,9 +15,7 @@ def _make_argument(name, annotations: dict, defaults: dict):
         arg = Opt(default=defaults[name])
     else:
         arg = Arg()
-    typ, nargs = _get_type_and_nargs(annotations, name, arg.default)
-    arg.type = typ
-    arg.nargs = nargs
+    arg.guess_type_and_nargs(annotations.get(name))
     return arg
 
 

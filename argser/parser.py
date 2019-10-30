@@ -9,31 +9,19 @@ from argser.consts import Args, SUB_COMMAND_MARK
 from argser.display import print_args, stringify
 from argser.fields import Opt
 from argser.logging import VERBOSE
-from argser.utils import ColoredHelpFormatter, is_list_like_type
+from argser.utils import ColoredHelpFormatter
 
 logger = logging.getLogger(__name__)
 
 
-def _get_nargs(typ, default):
-    # just list
-    if typ is list:
-        if len(default or []) == 0:
-            nargs = '*'
-            typ = str
-        else:
-            nargs = '+'
-            typ = type(default[0])
-        return typ, nargs
-    #  List or List[str] or similar
-    if is_list_like_type(typ):
-        if typ.__args__ and isinstance(typ.__args__[0], type):
-            typ = typ.__args__[0]
-        else:
-            typ = str
-        nargs = '*' if len(default or []) == 0 else '+'
-        return typ, nargs
-    # non list type
-    return typ, None
+def _collect_annotations(cls: type):
+    ann = getattr(cls, '__annotations__', {}).copy()  # don't modify class annotation
+    for base in cls.__bases__:
+        for name, typ in _collect_annotations(base).items():
+            # update without touching redefined values in inherited classes
+            if name not in ann:
+                ann[name] = typ
+    return ann
 
 
 def _get_fields(cls: Type[Args]):
@@ -56,32 +44,12 @@ def _get_fields(cls: Type[Args]):
     return fields
 
 
-def _get_type_and_nargs(ann: dict, field_name: str, default):
-    # get type from annotation or from default value or fallback to str
-    default_type = None if default is None else type(default)
-    typ = ann.get(field_name, default_type)
-    logger.log(VERBOSE, f"init type {typ}, default: {default}")
-    typ, nargs = _get_nargs(typ, default)
-    logger.log(VERBOSE, f"type {typ}, nargs {nargs!r}")
-    return typ, nargs
-
-
-def _collect_annotations(cls: type):
-    ann = getattr(cls, '__annotations__', {}).copy()  # don't modify class annotation
-    for base in cls.__bases__:
-        for name, typ in _collect_annotations(base).items():
-            # update without touching redefined values in inherited classes
-            if name not in ann:
-                ann[name] = typ
-    return ann
-
-
 def _read_args(
     args_cls: Type[Args],
     override=False,
     bool_flag=True,
-    one_dash=False,
-    replace_underscores=True,
+    prefix='--',
+    repl=('_', '-'),
 ):
     args = []
     sub_commands = {}
@@ -89,39 +57,50 @@ def _read_args(
     fields = _get_fields(args_cls)
     for key, value in fields.items():  # type: str, Any
         logger.log(VERBOSE, f"reading {key!r}")
+        annotation = ann.get(key)
+
         if hasattr(value, SUB_COMMAND_MARK):
             sub_commands[key] = _read_args(
                 value.__class__,
                 bool_flag=bool_flag,
-                one_dash=one_dash,
+                prefix=prefix,
+                repl=repl,
             )
             continue
         if isinstance(value, Opt):
-            typ, nargs = _get_type_and_nargs(ann, key, value.default)
-            value.dest = value.dest or key
-            value.type = value.type or typ
-            if value.action != 'append':
-                value.nargs = nargs if value.nargs is None else value.nargs
-            if override:
-                value.bool_flag = bool_flag
-                value.one_dash = one_dash
-                value.replace_underscores = replace_underscores
-            logger.log(VERBOSE, value.__dict__)
-            args.append(value)
-            continue
-        typ, nargs = _get_type_and_nargs(ann, key, value)
-        args.append(
-            Opt(
+            option = value
+            option.guess_type_and_nargs(annotation)
+            if not option.dest:
+                option.set_dest(key)
+        else:
+            default, constructor, help = value, None, None
+            if isinstance(value, tuple):
+                if len(value) == 2:
+                    default, help = value
+                elif len(value) == 3:
+                    default, constructor, help = value
+                else:
+                    raise ValueError(
+                        f"invalid value for {key}. "
+                        f"Tuple structure should be: default [help | [constructor, help]]"
+                    )
+            option = Opt(
                 dest=key,
-                type=typ,
-                default=value,
-                nargs=nargs,
-                # extra
+                default=default,
+                help=help,
+                constructor=constructor,
                 bool_flag=bool_flag,
-                one_dash=one_dash,
-                replace_underscores=replace_underscores,
+                prefix=prefix,
+                repl=repl,
             )
-        )
+            option.guess_type_and_nargs(annotation)
+
+        if override:
+            option.bool_flag = bool_flag
+            option.prefix = prefix
+            option.repl = repl
+        logger.log(VERBOSE, option.__dict__)
+        args.append(option)
     return args_cls, args, sub_commands
 
 
@@ -131,6 +110,10 @@ def _join_names(*names: str):
 
 def _uwrap(*names: str):
     return f'__{_join_names(*names)}__'
+
+
+def _get_prefix_chars(args: List[Opt]):
+    return
 
 
 def _make_parser(name: str, args: List[Opt], sub_commands: dict, formatter_class=HelpFormatter, **kwargs):
@@ -146,6 +129,8 @@ def _make_parser(name: str, args: List[Opt], sub_commands: dict, formatter_class
     """
     logger.log(VERBOSE, f"parser {name}:\n - {args}\n - {sub_commands}")
     parser = ArgumentParser(formatter_class=formatter_class, **kwargs)
+    parser.prefix_chars = ''.join({a.prefix for a in args})  # get all possible prefixes
+
     for arg in args:
         arg.inject(parser)
 
@@ -202,16 +187,17 @@ def _make_shortcuts(args: List[Opt]):
     """
     used = defaultdict(lambda: False)
     for arg in args:
-        for n in arg.names:
+        for n in arg.option_names:
             used[n] = True
     for arg in args:
-        if arg.aliases != ():
+        # user specified own options - skip shortcuts generation
+        if arg.option_names != [arg.dest]:
             continue
         a = _make_shortcut(arg.dest)
         if used[a] > 0:
             continue
         used[a] = True
-        arg.aliases = (a,)
+        arg.option_names += [a]
 
 
 def _make_shortcuts_sub_wise(args: List[Opt], sub_commands: dict):
@@ -261,9 +247,9 @@ def make_parser(
     args_cls: Type[Args],
     colorize=True,
     make_shortcuts=True,
-    replace_underscores=True,
     bool_flag=True,
-    one_dash=False,
+    prefix='--',
+    repl=('_', '-'),
     override=False,
     parser_kwargs=None,
     argcomplete_kwargs=None,
@@ -295,8 +281,8 @@ def make_parser(
         args_cls,
         override=override,
         bool_flag=bool_flag,
-        one_dash=one_dash,
-        replace_underscores=replace_underscores,
+        prefix=prefix,
+        repl=repl,
     )
     if make_shortcuts:
         _make_shortcuts_sub_wise(args, sub_commands)

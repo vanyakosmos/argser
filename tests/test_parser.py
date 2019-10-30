@@ -203,10 +203,10 @@ def test_parse_bool():
     assert args.a is True
     args = parse_args(Args, '--no-a', bool_flag=True)
     assert args.a is False
-    args = parse_args(Args, '-no-a', bool_flag=True, one_dash=True)
+    args = parse_args(Args, '-no-a', bool_flag=True, prefix='-')
     assert args.a is False
 
-    args = parse_args(Args, '-no-b -c', bool_flag=True, one_dash=True)
+    args = parse_args(Args, '-no-b -c', bool_flag=True, prefix='-')
     assert args.b is False
     assert args.c is True
 
@@ -262,11 +262,16 @@ class TestList:
 
     def test_types(self, list_args):
         args_cls, (a, b, c, d, e), sub_commands = _read_args(list_args().__class__)
-        assert a.type is str
-        assert b.type is str
-        assert c.type is int
-        assert d.type is bool
-        assert e.type is float
+        assert a.type is list  # because of annotation
+        assert a.constructor is str
+        assert b.type == List  # ^ same
+        assert b.constructor is str
+        assert c.type == List[int]
+        assert c.constructor is int
+        assert d.type == List[bool]
+        assert d.constructor is bool
+        assert e.type == List[float]
+        assert e.constructor is float
 
 
 def test_non_standard_type():
@@ -307,22 +312,22 @@ def test_custom_type():
 
 def test_override():
     class Args:
-        aa = Opt(default='foo', one_dash=True)
-        bb = Opt(default='bar', one_dash=False)
+        aa = Opt(default='foo', prefix='-')
+        bb = Opt(default='bar', prefix='--')
         cc = 'baz'
 
-    args = parse_args(Args, '-aa foo1 --bb bar1 -cc baz1', override=False, one_dash=True)
+    args = parse_args(Args, '-aa foo1 --bb bar1 -cc baz1', override=False, prefix='-')
     assert args.aa == 'foo1'
     assert args.bb == 'bar1'
     assert args.cc == 'baz1'
 
-    args = parse_args(Args, '--aa foo1 --bb bar1 --cc baz1', override=True, one_dash=False)
+    args = parse_args(Args, '--aa foo1 --bb bar1 --cc baz1', override=True, prefix='--')
     assert args.aa == 'foo1'
     assert args.bb == 'bar1'
     assert args.cc == 'baz1'
 
     with pytest.raises(SystemExit):
-        parse_args(Args, '-aa foo1 --bb bar1 -cc baz1', override=True, one_dash=False)
+        parse_args(Args, '-aa foo1 --bb bar1 -cc baz1', override=True, prefix='--')
 
 
 def test_action_store():
@@ -381,7 +386,7 @@ class TestAction:
 
     def test_version(self):
         class Args:
-            version: str = Opt(action='version', version='%(prog)s 0.0.1', aliases=('V',))
+            version: str = Opt('V', action='version', version='%(prog)s 0.0.1')
 
         with pytest.raises(SystemExit, match='0'):
             parse_args(Args, '-V', parser_kwargs=dict(prog='PROG'))
@@ -413,24 +418,28 @@ def test_make_shortcuts():
     bc = Opt(dest='bc', type=str)
     ab_cd = Opt(dest='ab_cd', type=str)
     ab_cde = Opt(dest='ab_cde', type=str)
-    bcd = Arg(dest='bcd', type=str, aliases=('foo',))
-    f1 = Opt(dest='f1', aliases=('f3',), type=str)
+    bcd = Opt('foo', dest='bcd', type=str)
+    f1 = Opt('f3', dest='f1', type=str)
     f2_3 = Opt(dest='f2_3', type=str)
     # sub
     aaa = Opt(dest='aaa', type=str)
     ab_cd2 = Opt(dest='ab_cd', type=str)
 
+    def comp_names(opt: Opt, *names):
+        return set(opt.option_names) == set(names)
+
     _make_shortcuts_sub_wise([a, aa, bc, ab_cd, ab_cde, bcd, f1, f2_3], {'sub': (None, [aaa, ab_cd2], {})})
-    assert a.dest == 'a' and a.aliases == ()  # already short name
-    assert aa.dest == 'aa' and aa.aliases == ()  # name 'a' already exists
-    assert bc.dest == 'bc' and bc.aliases == ('b',)
-    assert ab_cd.dest == 'ab_cd' and ab_cd.aliases == ('ac',)
-    assert ab_cde.dest == 'ab_cde' and ab_cde.aliases == ()
-    assert bcd.dest == 'bcd' and bcd.aliases == ('foo',)  # alias was already defined and override is false
-    assert aaa.dest == 'aaa' and aaa.aliases == ('a',)
-    assert ab_cd2.dest == 'ab_cd' and ab_cd2.aliases == ('ac',)
-    assert f1.aliases == ('f3',)
-    assert f2_3.aliases == ()
+    assert a.dest == 'a' and comp_names(a, 'a')  # already short name
+    assert aa.dest == 'aa' and comp_names(aa, 'aa')  # name 'a' already exists
+    assert bc.dest == 'bc' and comp_names(bc, 'b', 'bc')
+    assert ab_cd.dest == 'ab_cd' and comp_names(ab_cd, 'ac', 'ab_cd')
+    assert ab_cde.dest == 'ab_cde' and comp_names(ab_cde, 'ab_cde')  # ac is taken
+    assert bcd.dest == 'bcd' and comp_names(bcd, 'foo', 'bcd')  # alias was already defined and override is false
+    assert comp_names(f1, 'f1', 'f3')
+    assert comp_names(f2_3, 'f2_3')
+    # sub
+    assert aaa.dest == 'aaa' and comp_names(aaa, 'a', 'aaa')
+    assert ab_cd2.dest == 'ab_cd' and comp_names(ab_cd2, 'ac', 'ab_cd')  # dest was changed
 
 
 def test_reusability():
@@ -467,3 +476,27 @@ def test_reusability():
     assert args.c == 'c'
     assert args.e == 'foo bar'
     assert args.g is False
+
+
+def test_prefix():
+    class Args:
+        aaa: int = Opt(prefix='-')
+        bbb: int = Opt(prefix='++')
+
+    args = parse_args(Args, '-aaa 42 ++bbb 42')
+    assert args.aaa == 42
+    assert args.bbb == 42
+
+
+def test_constructor():
+    class Args:
+        a: List[int] = Opt(constructor=lambda x: [int(e) + 1 for e in list(x)], nargs='?', default=[-1])
+        b: int = Opt(constructor=lambda x: int(x) + 2)
+
+    args = parse_args(Args, '')
+    assert args.a == [-1]
+    assert args.b is None
+
+    args = parse_args(Args, '-a 123 -b 5')
+    assert args.a == [2, 3, 4]
+    assert args.b == 7

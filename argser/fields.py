@@ -41,7 +41,7 @@ class Opt:
         :param nargs: number of values
         :param help: help text to display in help message alongside arguments
         :param metavar: thingy that will be displayed near options with values: --args METAVAR
-        :param action: argparse action: count, append, store_const
+        :param action: argparse action: count, append, store_const, version
         :param completer: argcomplete completion function
         :param constructor: callable that accepts a string and returns desirable value, default is :attr:`type`
         :param bool_flag: if True then read bool from argument flag: `--arg` is True, `--no-arg` is False,
@@ -134,7 +134,7 @@ class Opt:
 
     def make_options(self, *options: str, prefix=None, repl=None):
         """
-        >>> self.make_options('aaa', 'a', 'foo_bar', '+already_has', prefix='--', replace=('_', '+'))
+        >>> Opt().make_options('aaa', 'a', 'foo_bar', '+already_has', prefix='--', repl=('_', '+'))
         ['--aaa', '-a', '--foo+bar', '+already+has']
         """
         prefix = prefix or self.prefix
@@ -149,7 +149,10 @@ class Opt:
             return self.dest[0].upper()
 
     def _guess_nargs(self, typ, default):
-        """"""
+        """
+        if type is list then generate new type and nargs based on default value
+        if type in typing List[...] then extract inner type
+        """
         # just list
         if typ is list:
             if len(default or []) == 0:
@@ -237,13 +240,15 @@ class Opt:
 
     def _inject(self, parser: ArgumentParser):
         params = self._params()
-        # action = params.get('action')
-        # if action in (
-        #     'store_const', 'store_true', 'store_false', 'append_const', 'version', 'count'
-        # ) and 'type' in params:
-        #     params.pop('type')
-        # if action in ('store_true', 'store_false', 'count', 'version') and 'metavar' in params:
-        #     params.pop('metavar')
+        action = params.get('action')
+        if action in (
+            'store_const', 'store_true', 'store_false', 'append_const', 'version', 'count'
+        ) and 'type' in params:
+            params.pop('type')
+        if action in ('store_true', 'store_false', 'count', 'version') and 'metavar' in params:
+            params.pop('metavar')
+        logger.log(VERBOSE, f"option: {self.options}")
+        logger.log(VERBOSE, f"params: {params}")
         action = parser.add_argument(*self.options, **params)
         return action
 
@@ -263,10 +268,12 @@ class Opt:
 class Arg(Opt):
     """Positional Argument"""
     def __init__(self, **kwargs):
-        # todo
-        kwargs.update(bool_flag=False, prefix='', repl=None)
+        kwargs.update(bool_flag=False)
         super().__init__(**kwargs)
 
     def _params(self, exclude=(), **kwargs):
         exclude += ('dest',)
         return super()._params(exclude=exclude, **kwargs)
+
+    def make_options(self, *options: str, prefix=None, repl=None):
+        return [self.dest]

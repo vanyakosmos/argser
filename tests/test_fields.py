@@ -234,16 +234,3 @@ class TestGuessType:
         p = ArgumentParser()
         o.inject(p)
         assert p.parse_args('-o 123'.split()).o == [2, 3, 4]
-
-
-@pytest.fixture
-def parser():
-    return ArgumentParser()
-
-
-class TestInject:
-    def test(self, parser: ArgumentParser):
-        o = Opt(dest='arg')
-        action = o.inject(parser)
-        print(action)
-        # assert 0

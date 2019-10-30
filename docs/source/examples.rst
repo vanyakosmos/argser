@@ -123,17 +123,17 @@ positional arguments
     >>> assert args.b == 'foo bar'
 
 
-one dash
+different prefixes
 
 .. doctest::
 
     >>> from argser import Opt
 
     >>> class Args:
-    ...     aaa: int = Opt(one_dash=False)
-    ...     bbb: int = Opt(one_dash=True)
+    ...     aaa: int = Opt(prefix='-')
+    ...     bbb: int = Opt(prefix='++')
     
-    >>> args = parse_args(Args, '--aaa 42 -bbb 42')
+    >>> args = parse_args(Args, '-aaa 42 ++bbb 42')
     >>> assert args.aaa == 42
     >>> assert args.bbb == 42
 
