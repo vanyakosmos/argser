@@ -140,7 +140,7 @@ def _make_parser(name: str, args: List[Opt], sub_commands: dict, formatter_class
     sub_parser = parser.add_subparsers(dest=_uwrap(name))
 
     for sub_name, (args_cls, args, sub_p) in sub_commands.items():
-        p = _make_parser(_join_names(name, sub_name), args, sub_p)
+        p = _make_parser(_join_names(name, sub_name), args, sub_p, formatter_class)
         parser_kwargs = getattr(args_cls, '__kwargs', {})
         parser_kwargs.setdefault('formatter_class', formatter_class)
         sub_parser.add_parser(sub_name, parents=[p], add_help=False, **parser_kwargs)
