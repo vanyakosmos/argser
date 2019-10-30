@@ -126,6 +126,16 @@ def _read_args(
 
 
 def _make_parser(name: str, args: List[Opt], sub_commands: dict, formatter_class=HelpFormatter, **kwargs):
+    """
+    Recursively make parser and sub-parsers.
+
+    :param name: name of parser prefixed with parent parser name
+    :param args:
+    :param sub_commands:
+    :param formatter_class:
+    :param kwargs:
+    :return:
+    """
     logger.log(VERBOSE, f"parser {name}:\n - {args}\n - {sub_commands}")
     parser = ArgumentParser(formatter_class=formatter_class, **kwargs)
     for arg in args:
@@ -136,16 +146,26 @@ def _make_parser(name: str, args: List[Opt], sub_commands: dict, formatter_class
 
     sub_parser = parser.add_subparsers(dest=SUB_COMMAND_DEST_FMT.format(name=name))
 
-    for name, (args_cls, args, sub_p) in sub_commands.items():
-        p = _make_parser(name, args, sub_p)
+    for sub_name, (args_cls, args, sub_p) in sub_commands.items():
+        p = _make_parser(f'{name}_{sub_name}', args, sub_p)
         parser_kwargs = getattr(args_cls, '__kwargs', {})
         parser_kwargs.setdefault('formatter_class', formatter_class)
-        sub_parser.add_parser(name, parents=[p], add_help=False, **parser_kwargs)
+        sub_parser.add_parser(sub_name, parents=[p], add_help=False, **parser_kwargs)
 
     return parser
 
 
 def _set_values(parser_name: str, res: Args, namespace: Namespace, args: List[Opt], sub_commands: dict):
+    """
+    Recursively extract attributes from namespace and add them to :attr:`res`.
+
+    :param parser_name: name of parser prefixed with parent parser name
+    :param res:
+    :param namespace:
+    :param args:
+    :param sub_commands:
+    :return:
+    """
     logger.log(VERBOSE, f'setting values for: {res}')
     for arg in args:
         setattr(res, arg.dest, namespace.__dict__.get(arg.dest))
@@ -154,7 +174,8 @@ def _set_values(parser_name: str, res: Args, namespace: Namespace, args: List[Op
         if getattr(namespace, SUB_COMMAND_DEST_FMT.format(name=parser_name)) == name:
             sub = getattr(res, name)
             setattr(res, name, sub)
-            _set_values(name, sub, namespace, args, sub_c)
+            sub_cmd_name = f'{parser_name}_{name}'
+            _set_values(sub_cmd_name, sub, namespace, args, sub_c)
         # otherwise nullify sub-command
         else:
             setattr(res, name, None)
