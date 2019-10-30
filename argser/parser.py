@@ -5,7 +5,7 @@ from argparse import ArgumentParser, HelpFormatter, Namespace
 from collections import defaultdict
 from typing import Any, List, Type
 
-from argser.consts import Args, SUB_COMMAND_DEST_FMT, SUB_COMMAND_MARK
+from argser.consts import Args, SUB_COMMAND_MARK
 from argser.display import print_args, stringify
 from argser.fields import Opt
 from argser.logging import VERBOSE
@@ -125,6 +125,14 @@ def _read_args(
     return args_cls, args, sub_commands
 
 
+def _join_names(*names: str):
+    return '__'.join(names)
+
+
+def _uwrap(*names: str):
+    return f'__{_join_names(*names)}__'
+
+
 def _make_parser(name: str, args: List[Opt], sub_commands: dict, formatter_class=HelpFormatter, **kwargs):
     """
     Recursively make parser and sub-parsers.
@@ -144,10 +152,10 @@ def _make_parser(name: str, args: List[Opt], sub_commands: dict, formatter_class
     if not sub_commands:
         return parser
 
-    sub_parser = parser.add_subparsers(dest=SUB_COMMAND_DEST_FMT.format(name=name))
+    sub_parser = parser.add_subparsers(dest=_uwrap(name))
 
     for sub_name, (args_cls, args, sub_p) in sub_commands.items():
-        p = _make_parser(f'{name}_{sub_name}', args, sub_p)
+        p = _make_parser(_join_names(name, sub_name), args, sub_p)
         parser_kwargs = getattr(args_cls, '__kwargs', {})
         parser_kwargs.setdefault('formatter_class', formatter_class)
         sub_parser.add_parser(sub_name, parents=[p], add_help=False, **parser_kwargs)
@@ -171,11 +179,10 @@ def _set_values(parser_name: str, res: Args, namespace: Namespace, args: List[Op
         setattr(res, arg.dest, namespace.__dict__.get(arg.dest))
     for name, (args_cls, args, sub_c) in sub_commands.items():
         # set values only if sub-command was chosen
-        if getattr(namespace, SUB_COMMAND_DEST_FMT.format(name=parser_name)) == name:
+        if getattr(namespace, _uwrap(parser_name)) == name:
             sub = getattr(res, name)
             setattr(res, name, sub)
-            sub_cmd_name = f'{parser_name}_{name}'
-            _set_values(sub_cmd_name, sub, namespace, args, sub_c)
+            _set_values(_join_names(parser_name, name), sub, namespace, args, sub_c)
         # otherwise nullify sub-command
         else:
             setattr(res, name, None)
