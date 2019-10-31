@@ -271,6 +271,17 @@ six = "*"
 
 [[package]]
 category = "dev"
+description = "py.test plugin that allows you to add environment variables."
+name = "pytest-env"
+optional = false
+python-versions = "*"
+version = "0.6.2"
+
+[package.dependencies]
+pytest = ">=2.6.0"
+
+[[package]]
+category = "dev"
 description = "World timezone definitions, modern and historical"
 name = "pytz"
 optional = false
@@ -455,7 +466,7 @@ argcomplete = ["argcomplete"]
 tabulate = ["tabulate"]
 
 [metadata]
-content-hash = "bae809b48c333a715be1e3ec40cd720c13fb737b5ed61661a592e59c4a0dc95e"
+content-hash = "8b33f5b6755b46b7bf84235875cb5b25c38131ebda5f971cad682fbdbe916e03"
 python-versions = "^3.6"
 
 [metadata.hashes]
@@ -487,6 +498,7 @@ pyparsing = ["6f98a7b9397e206d78cc01df10131398f1c8b8510a2f4d97d9abd82e1aacdd80",
 pytest = ["7e4800063ccfc306a53c461442526c5571e1462f61583506ce97e4da6a1d88c8", "ca563435f4941d0cb34767301c27bc65c510cb82e90b9ecf9cb52dc2c63caaa0"]
 pytest-cov = ["cc6742d8bac45070217169f5f72ceee1e0e55b0221f54bcf24845972d3a47f2b", "cdbdef4f870408ebdbfeb44e63e07eb18bb4619fae852f6e760645fa36172626"]
 pytest-doctestplus = ["8872b9c236924af20c39c2813d7f1bde50a1edca7c4aba5a8bfbae3a32360e87"]
+pytest-env = ["7e94956aef7f2764f3c147d216ce066bf6c42948bb9e293169b1b1c880a580c2"]
 pytz = ["1c557d7d0e871de1f5ccd5833f60fb2550652da6be2693c1e02300743d21500d", "b02c06db6cf09c12dd25137e563b31700d3b80fcc4ad23abb7a315f2789819be"]
 requests = ["11e007a8a2aa0323f5a921e9e6a2d7e4e67d9877e85773fba9ba6419025cbeb4", "9cf5292fcd0f598c671cfc1e0d7d1a7f13bb8085e9a590f48c010551dc6c4b31"]
 six = ["3350809f0555b11f552448330d0b52d5f24c91a322ea4a15ef22629740f3761c", "d16a0141ec1a18405cd4ce8b4613101da75da0e9a7aec5bdd4fa804d0e0eba73"]

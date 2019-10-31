@@ -29,6 +29,7 @@ sphinx-rtd-theme = "^0.4.3"
 sphinxcontrib-apidoc = "^0.3.0"
 m2r = "^0.2.1"
 pytest-doctestplus = "^0.4.0"
+pytest-env = "^0.6.2"
 
 [tool.poetry.extras]
 tabulate = ["tabulate"]

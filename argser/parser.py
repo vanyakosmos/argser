@@ -5,7 +5,7 @@ from argparse import ArgumentParser, Namespace
 from typing import Any, List, Type
 
 from argser.consts import Args, SUB_COMMAND_MARK
-from argser.display import print_args, stringify
+from argser.display import print_args, stringify, stringify_colored
 from argser.fields import Opt
 from argser.logging import VERBOSE
 from argser.formatters import ColoredHelpFormatter, HelpFormatter
@@ -208,11 +208,12 @@ def _make_shortcuts_sub_wise(args: List[Opt], sub_commands: dict):
         _make_shortcuts_sub_wise(args, sub_p)
 
 
-def sub_command(args_cls: Type[Args], **kwargs) -> Args:
+def sub_command(args_cls: Type[Args], colorize=True, **kwargs) -> Args:
     """
     Add sub-command to the parser.
 
     :param args_cls: data holder
+    :param colorize: use colored formatter
     :param kwargs: additional parser kwargs
     :return: instance of :attr:`args_cls` with added metadata
 
@@ -223,8 +224,9 @@ def sub_command(args_cls: Type[Args], **kwargs) -> Args:
     >>> args = parse_args(Args, 'sub -a 2')
     >>> assert args.sub.a == 2
     """
-    setattr(args_cls, '__str__', stringify)
-    setattr(args_cls, '__repr__', stringify)
+    to_str = stringify_colored if colorize else stringify
+    setattr(args_cls, '__str__', to_str)
+    setattr(args_cls, '__repr__', to_str)
     setattr(args_cls, '__kwargs', kwargs)
     setattr(args_cls, SUB_COMMAND_MARK, True)
     return args_cls()
@@ -318,7 +320,7 @@ def populate_holder(parser: ArgumentParser, args_cls: Type[Args], options: tuple
 
 
 def parse_args(
-    args_cls,
+    args_cls: Type[Args],
     args=None,
     *,
     show=None,
@@ -327,7 +329,7 @@ def parse_args(
     shorten=False,
     tabulate_kwargs=None,
     **kwargs,
-):
+) -> Args:
     """
     Parse arguments from string or command line and return populated instance of `args_cls`.
 

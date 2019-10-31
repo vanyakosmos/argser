@@ -1,8 +1,5 @@
-import os
 import textwrap
 from typing import List
-
-import pytest
 
 from argser import Opt, sub_command
 # noinspection PyProtectedMember
@@ -26,11 +23,6 @@ def test_cli():
     args.shell = 'bash'
     # run without errors:
     autocomplete(args)
-
-
-@pytest.fixture(autouse=True)
-def _ansi_color_disable():
-    os.environ['ANSI_COLORS_DISABLED'] = '1'
 
 
 class TestHelpFormatting:
