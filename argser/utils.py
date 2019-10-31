@@ -2,11 +2,17 @@ import re
 from argparse import ArgumentTypeError
 from functools import partial
 
-from termcolor import colored
+import termcolor
 
 from argser.consts import FALSE_VALUES, TRUE_VALUES
 
 RE_INV_CODES = re.compile(r"\x1b\[\d+[;\d]*m|\x1b\[\d*;\d*;\d*m")
+
+
+def colored(text, color=None):
+    if color is None:
+        return text
+    return termcolor.colored(text, color=color)
 
 
 def vlen(s: str):

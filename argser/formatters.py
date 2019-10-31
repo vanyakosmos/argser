@@ -1,8 +1,7 @@
 import argparse
 from argparse import Action
 
-from termcolor import colored
-
+from argser.utils import colored
 from argser.fields import Opt
 
 
