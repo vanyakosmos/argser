@@ -133,7 +133,7 @@ class TestHelpFormatting:
             v: int = Opt(action='count', default=0)
             v1: int = Opt(action='count', help='bar')
             v2: int = Opt(action='count', help="foo")
-            ap: List[str] = Opt(action='append')
+            ap: list = Opt(action='append')
 
         self.compare(
             Args,
@@ -145,7 +145,7 @@ class TestHelpFormatting:
                 -v          int, default: 0
                 --v1        int, default: None. bar
                 --v2        int, default: None. foo
-                --ap A      List[str], default: None
+                --ap A      list, default: None
             """,
         )
 
