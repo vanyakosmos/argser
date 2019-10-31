@@ -526,3 +526,47 @@ def test_quick_help():
     with pytest.raises(ValueError) as context:
         parse_args(Args, '')
     assert '(default, help) or (default, constructor, help)' in str(context.value)
+
+
+def test_sub_cmd_with_same_arguments():
+    # use factory because parse_args will remove static sub-cmd attributes from inner classed
+    class Args:
+        a = 1
+        b = 2
+
+        class Sub:
+            a = 3
+            b = 4
+
+            class Sub2:
+                a = -1
+                b = -2
+
+            sub = sub_command(Sub2)
+
+        sub = sub_command(Sub)
+
+    args = parse_args(Args, '')
+    assert args.a == 1
+    assert args.b == 2
+    assert args.sub is None
+
+    args = parse_args(Args, 'sub')
+    assert args.a == 1
+    assert args.b == 2
+    assert args.sub.a == 3
+    assert args.sub.b == 4
+
+    args = parse_args(Args, '-a 5 -b 6 sub -a 7 -b 8')
+    assert args.a == 5
+    assert args.b == 6
+    assert args.sub.a == 7
+    assert args.sub.b == 8
+
+    args = parse_args(Args, '-a 5 -b 6 sub -a 7 -b 8 sub -a 9 -b 10')
+    assert args.a == 5
+    assert args.b == 6
+    assert args.sub.a == 7
+    assert args.sub.b == 8
+    assert args.sub.sub.a == 9
+    assert args.sub.sub.b == 10

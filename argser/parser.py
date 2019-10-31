@@ -2,7 +2,6 @@ import logging
 import re
 import shlex
 from argparse import ArgumentParser, Namespace
-from collections import defaultdict
 from typing import Any, List, Type
 
 from argser.consts import Args, SUB_COMMAND_MARK
@@ -46,6 +45,7 @@ def _get_fields(cls: Type[Args]):
 
 def _read_args(
     args_cls: Type[Args],
+    parser_name='root',
     override=False,
     bool_flag=True,
     prefix='--',
@@ -58,10 +58,12 @@ def _read_args(
     for key, value in fields.items():  # type: str, Any
         logger.log(VERBOSE, f"reading {key!r}")
         annotation = ann.get(key)
+        dest = _join_names(parser_name, key)
 
         if hasattr(value, SUB_COMMAND_MARK):
             sub_commands[key] = _read_args(
                 value.__class__,
+                dest,
                 bool_flag=bool_flag,
                 prefix=prefix,
                 repl=repl,
@@ -71,7 +73,7 @@ def _read_args(
             option = value
             option.guess_type_and_nargs(annotation)
             if not option.dest:
-                option.set_dest(key)
+                option.set_dest(dest)
         else:
             default, constructor, help = value, None, None
             if isinstance(value, tuple):
@@ -85,7 +87,7 @@ def _read_args(
                         f"Tuple structure should be: (default, help) or (default, constructor, help)"
                     )
             option = Opt(
-                dest=key,
+                dest=dest,
                 default=default,
                 help=help,
                 constructor=constructor,
@@ -155,15 +157,20 @@ def _set_values(parser_name: str, res: Args, namespace: Namespace, args: List[Op
     :param sub_commands:
     :return:
     """
-    logger.log(VERBOSE, f'setting values for: {res}')
+    logger.log(VERBOSE, f'setting values for: {parser_name} ~ {res}')
     for arg in args:
-        setattr(res, arg.dest, namespace.__dict__.get(arg.dest))
+        setattr(res, arg.name, namespace.__dict__.get(arg.dest))
+
     for name, (args_cls, args, sub_c) in sub_commands.items():
         # set values only if sub-command was chosen
         if getattr(namespace, _uwrap(parser_name)) == name:
             sub = getattr(res, name)
+            # Reinitialize instance of sub-command so that nullification of attribute would not touch
+            # original class and inner sub-commands. Mostly useful for tests.
+            sub = sub.__class__()
             setattr(res, name, sub)
-            _set_values(_join_names(parser_name, name), sub, namespace, args, sub_c)
+            sub_parser_name = _join_names(parser_name, name)
+            _set_values(sub_parser_name, sub, namespace, args, sub_c)
         # otherwise nullify sub-command
         else:
             setattr(res, name, None)
@@ -178,21 +185,20 @@ def _make_shortcut(name: str):
 
 def _make_shortcuts(args: List[Opt]):
     """
-    Add shortcuts to arguments without defined aliases.
-    todo: deal with duplicated names
+    Add shortcuts to arguments without defined options.
     """
-    used = defaultdict(lambda: False)
+    used = set()
     for arg in args:
         for n in arg.option_names:
-            used[n] = True
+            used.add(n)
     for arg in args:
         # user specified own options - skip shortcuts generation
-        if arg.option_names != [arg.dest]:
+        if arg.option_names != [arg.name]:
             continue
-        a = _make_shortcut(arg.dest)
-        if used[a] > 0:
+        a = _make_shortcut(arg.name)
+        if a in used:
             continue
-        used[a] = True
+        used.add(a)
         arg.option_names += [a]
 
 
@@ -236,7 +242,7 @@ def _setup_argcomplete(parser, **kwargs):
         import argcomplete
         argcomplete.autocomplete(parser, **kwargs)
     except ImportError:
-        logger.log(VERBOSE, "argcomplete is not installed")
+        logger.debug("Argcomplete is not installed. Skipping integration.")
 
 
 def make_parser(

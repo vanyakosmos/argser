@@ -55,7 +55,6 @@ class Opt:
         self.prefix = prefix
         self.repl = repl
         self.option_names = list(options)
-        # self.options = self.make_options(*options, prefix=prefix, repl=repl)
         self.metavar = metavar
         self.dest = self.set_dest(dest)
         self.type = type
@@ -80,6 +79,7 @@ class Opt:
 
     @property
     def name(self):
+        """Destination w/o parser prefix."""
         if self.dest:
             return self.dest.split('__')[-1]
 
@@ -111,7 +111,7 @@ class Opt:
             logger.warning("destination was already defined")
             return
         self.dest = dest
-        self.option_names += [dest]
+        self.option_names += [self.name]
         self.metavar = self.metavar or self.make_metavar()
         return self.dest
 
@@ -142,7 +142,7 @@ class Opt:
 
     def make_metavar(self):
         if self.dest:
-            return self.dest[0].upper()
+            return self.name[0].upper()
 
     def _guess_nargs(self, typ, default):
         """
