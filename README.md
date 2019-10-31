@@ -36,6 +36,12 @@ pip install argser[all]
 ```
 
 
+## Notes for examples
+
+If second parameter of `parse_args` is string (as in almost all examples) then it will be parsed,
+otherwise arguments to parse will be taken from command line.
+
+
 ## Simple example
 
 ```python

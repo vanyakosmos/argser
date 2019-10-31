@@ -300,6 +300,78 @@ Multiple sub-commands:
     ['1', 2]
 
 
+Override options globally
+*************************
+
+.. doctest::
+
+    >>> import argser
+    >>> class Args:
+    ...     a = 1
+    ...     b = True
+    ...     ccc_ddd = 'foo'
+
+    >>> args = argser.parse_args(
+    ...     Args,
+    ...     '+a 42 +b false +ccc+ddd "foo bar"',  # read from command if None
+    ...     make_shortcuts=False,  # +ccc+ddd will not generate cd now
+    ...     bool_flag=False,  # bool arg will require bool value near flag
+    ...     prefix='+',  # change default prefix
+    ...     repl=('_', '+'),  # change auto-replacer options (from, to)
+    ...     override=True,  # only required if you need to override args defined with Opt/Arg
+    ... )
+
+    >>> assert args.a == 42
+    >>> assert args.b is False
+    >>> assert args.ccc_ddd == 'foo bar'
+
+
+Display arguments
+*****************
+
+.. doctest::
+    
+    >>> from argser import sub_command, parse_args  
+    >>> class Args:
+    ...     a = 1
+    ...     b = 'foo'
+    ...     class Sub:
+    ...         a = 'foo bar'
+    ...     sub = sub_command(Sub)
+    >>> args = parse_args(
+    ...     Args,
+    ...     '-a 42 sub -a "fooooooooo baaaaaaaaaaaaaaar baaaaaaaaaaaaaaar"',
+    ...     show='table',
+    ... )
+    arg    value     arg     value                       
+    -----  -------   ------  ----------------------------
+    a      42        sub__a  fooooooooo baaaaaaaaaaaaaaar
+    b      foo               baaaaaaaaaaaaaaar           
+
+
+Or in one line:
+
+.. doctest::
+    
+    >>> args = parse_args(  
+    ...     Args,
+    ...     '-a 42 sub -a "fooooooooo baaaaaaaaaaaaaaar baaaaaaaaaaaaaaar"',
+    ...     show=True,
+    ... )
+    Args(a=42, b='foo', sub=Sub(a='fooooooooo baaaaaaaaaaaaaaar baaaaaaaaaaaaaaar'))
+    
+Or after parsing:
+
+.. doctest::
+
+    >>> from argser import print_args
+    >>> print_args(args, 'table')
+    arg    value     arg     value                       
+    -----  -------   ------  ----------------------------
+    a      42        sub__a  fooooooooo baaaaaaaaaaaaaaar
+    b      foo               baaaaaaaaaaaaaaar   
+
+
 Auto completion
 ***************
 

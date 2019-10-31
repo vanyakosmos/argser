@@ -12,8 +12,8 @@ def stringify(args: Args, shorten=False):
     def pair(x):
         k, v = x
         if shorten:
-            v = repr(v)
-            v = textwrap.shorten(v, width=20, placeholder='...')
+            v = textwrap.shorten(str(v), width=20, placeholder='...')
+        v = repr(v)
         return f"{k}={v}"
 
     pairs = ', '.join(map(pair, args.__dict__.items()))
@@ -27,9 +27,9 @@ def stringify_colored(args: Args, shorten=False):
         if v is None:
             v = colors.red('-')
         else:
-            v = repr(v)
             if shorten:
-                v = textwrap.shorten(v, width=20, placeholder='...')
+                v = textwrap.shorten(str(v), width=20, placeholder='...')
+            v = repr(v)
         return f"{colors.green(k)}={v}"
 
     pairs = ', '.join(map(pair, args.__dict__.items()))
@@ -148,8 +148,8 @@ def print_args(args: Args, variant=None, print_fn=None, colorize=True, shorten=F
 
     :param args: some object with attributes
     :param variant:
-        if truthy value - print arguments in one line
         if 'table' - print arguments as table
+        otherwise print arguments in one line
     :param print_fn:
     :param colorize: add colors to the help message and arguments printing
     :param shorten: shorten long text (eg long default value)
@@ -161,9 +161,7 @@ def print_args(args: Args, variant=None, print_fn=None, colorize=True, shorten=F
     if variant == 'table':
         s = make_table(args, colorize=colorize, shorten=shorten, **kwargs)
     else:
-        if colorize:
-            s = stringify_colored(args, shorten)
-        else:
-            s = stringify(args, shorten)
+        to_str = stringify_colored if colorize else stringify
+        s = to_str(args, shorten)
     print_fn = print_fn or print
     print_fn(s)

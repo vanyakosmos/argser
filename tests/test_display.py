@@ -1,6 +1,7 @@
 import textwrap
 
-from argser import parse_args, sub_command, make_table, Opt
+from argser import parse_args, sub_command, Opt
+from argser.display import make_table
 
 
 def test_prints():
