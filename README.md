@@ -1,15 +1,16 @@
 # argser
 
 [![PyPI version](https://badge.fury.io/py/argser.svg)](http://badge.fury.io/py/argser)
+[![Downloads](https://pepy.tech/badge/argser)](https://pepy.tech/project/argser)
 [![Build Status](https://github.com/vanyakosmos/argser/workflows/test-publish/badge.svg)](https://github.com/vanyakosmos/argser/actions?workflow=test-publish)
 [![Coverage](https://codecov.io/gh/vanyakosmos/argser/branch/master/graph/badge.svg)](https://codecov.io/gh/vanyakosmos/argser)
-[![License](https://img.shields.io/github/license/mashape/apistatus.svg)](https://pypi.python.org/pypi/argser/)
-[![Downloads](https://pepy.tech/badge/argser)](https://pepy.tech/project/argser)
+[![Docs](https://readthedocs.org/projects/argser/badge/?version=stable)](https://argser.readthedocs.io/en/stable/)
 
 [GitHub](https://github.com/vanyakosmos/argser) | 
 [PyPI](https://pypi.org/project/argser/) | 
-[Docs](https://argser.readthedocs.io/en/latest) | 
-[Examples](https://argser.readthedocs.io/en/latest/examples.html) | 
+[Docs](https://argser.readthedocs.io/en/stable) | 
+[Examples](https://argser.readthedocs.io/en/stable/examples.html) | 
+[Installation](https://argser.readthedocs.io/en/stable/installation.html) | 
 [Changelog](CHANGELOG.md)
 
 Arguments parsing without boilerplate.
@@ -44,7 +45,7 @@ class Args:
     a = 'a'
     foo = 1
     bar: bool
-
+    bar_baz = 42, "bar_baz help"
 
 args = parse_args(Args, show=True)
 ```
@@ -61,6 +62,7 @@ parser.add_argument('--foo', '-f', dest='foo', type=int, default=1, help="int, d
 parser.add_argument('--bar', '-b', dest='bar', action='store_true', help="bool, default: None")
 parser.add_argument('--no-bar', '--no-b', dest='bar', action='store_false')
 parser.set_defaults(bar=None)
+parser.add_argument('--bar-baz', dest='bar_baz', default=42, help="int, default: 42. bar_baz help")
 
 args = parser.parse_args()
 print(args)
@@ -69,20 +71,20 @@ print(args)
 
 ```text
 ❯ python playground.py -a "aaa bbb" -f 100500 --no-b
->> Args(bar=False, a='aaa bbb', foo=100500)
+>>> Args(bar=False, a='aaa bbb', foo=100500, bar_baz=42)
 ```
 
 ```text
 ❯ python playground.py -h
-usage: playground.py [-h] [--bar] [--no-bar] [-a [A]] [--foo [FOO]]
+usage: playground.py [-h] [--bar] [--no-bar] [-a A] [--foo F] [--bar-baz B]
 
 optional arguments:
-  -h, --help            show this help message and exit
-  --bar, -b             bool, default: None.
-  --no-bar, --no-b
-  -a [A]                str, default: 'a'.
-  --foo [FOO], -f [FOO]
-                        int, default: 1.
+    -h, --help           show this help message and exit
+    --bar, -b            bool, default: None
+    --no-bar, --no-b
+    -a A                 str, default: 'a'
+    --foo F, -f F        int, default: 1
+    --bar-baz B, --bb B  int, default: 42. bar_baz help
 ```
 
 
@@ -102,19 +104,20 @@ assert argser.call(foo, '1 2 -c 3.4') == ['1', 2, 3.4]
 
 ```python
 from argser import parse_args, sub_command
-    
-class SubArgs:
-    d = 1
-    e = '2'
 
 class Args:
     a: bool
     b = []
     c = 5
+    
+    class SubArgs:
+        d = 1
+        e = '2'
     sub = sub_command(SubArgs, help='help message for sub-command')
 
-args = parse_args(Args, '-a -c 10', parser_help='help message for root parser')
+args = parse_args(Args, '-a -b a b -c 10', parser_help='help message for root parser')
 assert args.a is True
+assert args.b == ['a', 'b']
 assert args.c == 10
 assert args.sub is None
 

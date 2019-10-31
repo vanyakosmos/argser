@@ -44,6 +44,7 @@ Arguments
 *********
 
 str / int / float
+-----------------
 
 .. doctest::
 
@@ -61,6 +62,7 @@ str / int / float
 
 
 booleans
+--------
 
 .. doctest::
 
@@ -84,6 +86,7 @@ booleans
 
 
 lists
+-----
 
 .. doctest::
 
@@ -109,6 +112,7 @@ lists
 
 
 positional arguments
+--------------------
 
 .. doctest::
 
@@ -124,6 +128,7 @@ positional arguments
 
 
 different prefixes
+------------------
 
 .. doctest::
 
@@ -139,6 +144,7 @@ different prefixes
 
 
 argparse params
+---------------
 
 .. doctest::
 
@@ -154,6 +160,28 @@ argparse params
     >>> assert args.a == 'foo'
     >>> assert args.b == 3
     >>> assert args.c == [1, 2]
+
+
+constructors
+------------
+
+.. doctest::
+
+    >>> from argser import Opt
+
+    >>> def make_a(a: str):
+    ...     return int(a) + 42
+
+    >>> def make_b(b: str):
+    ...     return b + '42'
+
+    >>> class Args:
+    ...     a: int = Opt(constructor=make_a)
+    ...     b = 'default', make_b, "help message for be"
+
+    >>> args = parse_args(Args, '-a 2 -b "foo"')
+    >>> assert args.a == 44
+    >>> assert args.b == "foo42"
 
 
 Actions
@@ -239,6 +267,7 @@ Call function with parsed arguments
     ... ]
 
 Or as decorator:
+----------------
 
 .. doctest::
 
@@ -252,6 +281,7 @@ In examples above ``a`` (implicit string) and ``b`` (int) are positional argumen
 
 
 Multiple sub-commands:
+----------------------
 
 .. doctest::
 

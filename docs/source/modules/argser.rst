@@ -8,6 +8,7 @@ Submodules
 
    argser.display
    argser.fields
+   argser.formatters
    argser.parse_func
    argser.parser
    argser.utils

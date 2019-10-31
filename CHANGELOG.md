@@ -11,6 +11,7 @@ Versions follow [Semantic Versioning](https://semver.org) (`<major>.<minor>.<pat
 
 - build parser based on function arguments
 - build parser with sub-commands using multiple functions
+- add constructor parameter for options
 
 
 ## 0.0.11
