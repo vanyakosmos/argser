@@ -1,7 +1,7 @@
 import textwrap
 from typing import List
 
-from argser import Opt, sub_command
+from argser import Opt, sub_command, Arg
 # noinspection PyProtectedMember
 from argser.parser import _read_args, _make_parser
 from argser.utils import is_list_like_type
@@ -33,6 +33,29 @@ class TestHelpFormatting:
         print(help_msg)
         real_help = textwrap.dedent(help_text)
         assert real_help.strip('\n ') == help_msg.strip('\n ')
+
+    def test_positional(self):
+        class Args:
+            a = Arg(help='a help')
+
+            class Sub:
+                b = Arg()
+
+            sub = sub_command(Sub, 'sub help')
+
+        self.compare(
+            Args,
+            """
+            usage: prog [-h] a {sub} ...
+            
+            positional arguments:
+                a           str. a help
+                {sub}
+            
+            optional arguments:
+                -h, --help  show this help message and exit
+            """,
+        )
 
     def test_lists(self):  # disable colorization of help message
         class Args:

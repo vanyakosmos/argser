@@ -267,12 +267,8 @@ class Arg(Opt):
         kwargs.update(bool_flag=False)
         super().__init__(**kwargs)
 
-    def _params(self, exclude=(), **kwargs):
-        exclude += ('dest',)
-        return super()._params(exclude=exclude, **kwargs)
-
     def make_metavar(self):
-        return None
+        return self.name
 
     def make_options(self, *options: str, prefix=None, repl=None):
-        return [self.dest]
+        return []
