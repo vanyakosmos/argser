@@ -1,7 +1,7 @@
 import logging
 
-from argser.utils import colors
+from termcolor import colored
 
 VERBOSE = 5  # logging level lower than DEBUG
 logging.VERBOSE = VERBOSE
-logging.addLevelName(VERBOSE, colors.yellow('VERBOSE'))
+logging.addLevelName(VERBOSE, colored('VERBOSE', 'blue'))

@@ -1,65 +1,76 @@
 import logging
+import re
 from argparse import ArgumentParser, SUPPRESS
-from typing import Iterable
+from functools import partial
+from typing import Tuple, Optional, List
 
 from argser.logging import VERBOSE
-from argser.utils import str2bool
+from argser.utils import str2bool, is_list_like_type
 
+RE_OPT_PREFIX = re.compile(r'^([^\w]*)\w.*$')
 logger = logging.getLogger(__name__)
 
 
 class Opt:
-    """Option"""
+    """Optional Argument (eg: --arg, -a)"""
     def __init__(
         self,
+        *options: str,
         dest: str = None,
         default=None,
         type=None,
         nargs=None,
-        aliases: Iterable[str] = (),
         help=None,
         metavar=None,
         action=None,
         # argcomplete
         completer=None,
         # extra
+        constructor=None,
         bool_flag=True,
-        one_dash=False,
-        replace_underscores=True,
+        prefix='--',
+        repl=('_', '-'),
         **kwargs,
     ):
         """
-        :param dest:
-        :param default:
-        :param type:
-        :param nargs:
-        :param aliases:
-        :param help:
-        :param bool_flag:
-            if True then read bool from argument flag: `--arg` is True, `--no-arg` is False,
-            otherwise check if arg value and truthy or falsy: `--arg 1` is True `--arg no` is False
-        :param one_dash: use one dash for long names: `-name` instead of `--name`
-        :param replace_underscores: replace underscores in argument names with dashes
+        :param options: list of strings to be used as arguments name. Can be modified by :attr:`prefix` and :attr:`repl`
+        :param dest: destination in the namespace, can be prefixed with sub-parser name
+        :param default: default value
+        :param type: type of value that will be displayed in help message and used for type hints.
+        :param nargs: number of values
+        :param help: help text to display in help message alongside arguments
+        :param metavar: thingy that will be displayed near options with values: --args METAVAR
+        :param action: argparse action: count, append, store_const, version
+        :param completer: argcomplete completion function
+        :param constructor: callable that accepts a string and returns desirable value, default is :attr:`type`
+        :param bool_flag: if True then read bool from argument flag: `--arg` is True, `--no-arg` is False,
+               otherwise check if arg value and truthy or falsy: `--arg 1` is True `--arg no` is False
+        :param prefix: automatically prefix options with prefix.
+               If option is single letter then prefix will also be shortened. See :meth:`set_options`
+        :param repl: update provided options: replace first value in tuple with second value
         :param kwargs: extra arguments for `parser.add_argument`
         """
-        self.dest = dest
+        assert len(set(prefix)) < 2, "prefix should consist from the same characters, eg: --, ++, ..."
+
+        self.prefix = prefix
+        self.repl = repl
+        self.option_names = list(options)
+        self.metavar = metavar
+        self.dest = self.set_dest(dest)
         self.type = type
         self.default = default
         self.nargs = nargs
-        self.aliases = aliases
         self.help = help
-        self._metavar = metavar
         self.action = action
         # argcomplete
         self.completer = completer
         # extra
+        self.constructor = self._pick_constructor(constructor)
         self.bool_flag = bool_flag
-        self.one_dash = one_dash
-        self.replace_underscores = replace_underscores
         self.extra = kwargs
 
     def __str__(self):
-        names = ', '.join(self.keys()) or '-'
+        names = ', '.join(self.options) or '-'
         type_name = getattr(self.type, '__name__', None)
         return f"Arg({names}, type={type_name}, default={self.default!r})"
 
@@ -67,34 +78,137 @@ class Opt:
         return str(self)
 
     @property
-    def metavar(self):
-        if self._metavar:
-            return self._metavar
+    def name(self):
+        """Destination w/o parser prefix."""
         if self.dest:
-            return self.dest[0].upper()
+            return self.dest.split('__')[-1]
 
     @property
-    def names(self):
-        names = [self.dest, *self.aliases]
-        return [n for n in names if n]
+    def options(self):
+        return self.make_options(*self.option_names)
 
-    def keys(self, prefix=None):
-        names = self.names
-        if self.replace_underscores:
-            names = ['-'.join(n.split('_')) for n in names]
-        if prefix:
-            names = [f'{prefix}{n}' for n in names]
-        for name in names:
-            if len(name) == 1 or self.one_dash:
-                yield f"-{name}"
+    @property
+    def no_options(self):
+        sep = self.repl[1] if self.repl else '-'
+        res = []
+        for opt in self.options:
+            # prefix defined and used in this option
+            if self.prefix and opt.startswith(self.prefix[:1]):
+                prefix = self.prefix
             else:
-                yield f"--{name}"
+                m = RE_OPT_PREFIX.match(opt)
+                prefix = m[1]
+            base = opt.lstrip(prefix)
+            key = f'{prefix}no{sep}{base}'
+            res.append(key)
+        return res
 
-    def params(self, exclude=(), **kwargs):
+    def set_dest(self, dest: str):
+        """Setup destination and related attributes. Should be called only once."""
+        if not dest:
+            return
+        if getattr(self, 'dest', None):
+            logger.warning("destination was already defined")
+            return
+        self.dest = dest
+        self.option_names += [self.name]
+        self.metavar = self.metavar or self.make_metavar()
+        return self.dest
+
+    def _replace(self, opt: str, repl: Optional[Tuple[str, str]]):
+        if not repl:
+            return opt
+        sub, join = repl
+        return join.join(opt.split(sub))
+
+    def _prefix(self, opt: str, prefix: str):
+        if not opt[0].isalpha():
+            return opt
+        if len(opt) == 1:
+            return f'{prefix[:1]}{opt}'
+        return f'{prefix}{opt}'
+
+    def make_options(self, *options: str, prefix=None, repl=None):
+        """
+        >>> Opt().make_options('aaa', 'a', 'foo_bar', '+already_has', prefix='--', repl=('_', '+'))
+        ['--aaa', '-a', '--foo+bar', '+already+has']
+        """
+        prefix = prefix or self.prefix
+        repl = repl or self.repl
+        options = map(partial(self._replace, repl=repl), options)
+        options = map(partial(self._prefix, prefix=prefix), options)
+        options = list(options)
+        return options
+
+    def make_metavar(self):
+        if self.dest:
+            return self.name[0].upper()
+
+    def _guess_nargs(self, typ, default):
+        """
+        if type is list then generate new type and nargs based on default value
+        if type in typing List[...] then extract inner type
+        """
+        # just list
+        if typ is list:
+            if len(default or []) == 0:
+                nargs = '*'
+                typ = str
+            else:
+                nargs = '+'
+                typ = type(default[0])
+            return typ, nargs
+        #  List or List[str] or similar
+        if is_list_like_type(typ):
+            if typ.__args__ and isinstance(typ.__args__[0], type):
+                typ = typ.__args__[0]
+            else:
+                typ = str
+            nargs = '*' if len(default or []) == 0 else '+'
+            return typ, nargs
+        # non list type
+        return typ, None
+
+    def _guess_type_and_nargs(self, annotation, default, default_type):
+        # get type from annotation or from default value or fallback to str
+        if not default_type:
+            default_type = str if default is None else type(default)
+        typ = annotation or default_type
+        logger.log(VERBOSE, f"init type {typ}, default: {default}")
+        typ, nargs = self._guess_nargs(typ, default)
+        logger.log(VERBOSE, f"type {typ}, nargs {nargs!r}")
+        return typ, nargs
+
+    def _restore_type(self, typ, nargs, default):
+        if isinstance(nargs, int) or nargs in ('*', '+') or isinstance(default, list):
+            return List[typ]
+        return typ
+
+    def _pick_constructor(self, *values):
+        if len(values) == 1 and values[0] is None:
+            return
+        for val in values:
+            if callable(val):
+                return val
+        else:
+            raise ValueError(f"invalid constructors: {values}")
+
+    def guess_type_and_nargs(self, annotation=None):
+        """Based on annotation and default value guess type, nargs and constructor."""
+        typ, nargs = self._guess_type_and_nargs(annotation, self.default, self.type)
+        if self.action == 'append':
+            nargs = None
+        self.nargs = self.nargs or nargs
+        # user specified type -> annotation -> guessed type
+        self.type = self.type or annotation or self._restore_type(typ, self.nargs, self.default)
+        self.constructor = self._pick_constructor(self.constructor, typ)
+        return typ, nargs
+
+    def _params(self, exclude=(), **kwargs):
         params = dict(
             dest=self.dest,
             default=self.default,
-            type=self.type,
+            type=self.constructor,
             nargs=self.nargs,
             help=self.help,
             metavar=self.metavar,
@@ -109,33 +223,41 @@ class Opt:
 
     def inject_bool(self, parser: ArgumentParser):
         if self.bool_flag and self.nargs not in ('*', '+'):
-            params = self.params(exclude=('type', 'nargs', 'metavar', 'action'))
-            action = parser.add_argument(*self.keys(), action='store_true', **params)
+            params = self._params(exclude=('type', 'nargs', 'metavar', 'action'))
+            action = parser.add_argument(*self.options, action='store_true', **params)
             parser.set_defaults(**{self.dest: self.default})
             params['default'] = SUPPRESS  # don't print help message for second flag
             if 'help' in params:
                 del params['help']
-            parser.add_argument(*self.keys(prefix='no-'), action='store_false', **params)
+            parser.add_argument(*self.no_options, action='store_false', **params)
             return action
-        params = self.params(type=str2bool)
-        return parser.add_argument(*self.keys(), **params)
+        params = self._params(type=str2bool)
+        return parser.add_argument(*self.options, **params)
+
+    def _inject(self, parser: ArgumentParser):
+        params = self._params()
+        action = params.get('action')
+        if action in (
+            'store_const', 'store_true', 'store_false', 'append_const', 'version', 'count'
+        ) and 'type' in params:
+            params.pop('type')
+        if action in ('store_true', 'store_false', 'count', 'version') and 'metavar' in params:
+            params.pop('metavar')
+        logger.log(VERBOSE, f"option: {self.options}")
+        logger.log(VERBOSE, f"params: {params}")
+        action = parser.add_argument(*self.options, **params)
+        return action
 
     def inject(self, parser: ArgumentParser):
         logger.log(VERBOSE, f"adding {self.dest} to the parser")
-        if self.type is bool:
+        if self.constructor is bool:
             action = self.inject_bool(parser)
         else:
-            params = self.params()
-            action = params.get('action')
-            if action in (
-                'store_const', 'store_true', 'store_false', 'append_const', 'version', 'count'
-            ) and 'type' in params:
-                params.pop('type')
-            if action in ('store_true', 'store_false', 'count', 'version') and 'metavar' in params:
-                params.pop('metavar')
-            action = parser.add_argument(*self.keys(), **params)
+            action = self._inject(parser)
         if callable(self.completer):
             action.completer = self.completer
+        logger.log(VERBOSE, action)
+        setattr(action, '__meta', self)  # will be useful in help formatter
         return action
 
 
@@ -145,14 +267,12 @@ class Arg(Opt):
         kwargs.update(bool_flag=False)
         super().__init__(**kwargs)
 
-    @property
-    def metavar(self):
-        if self._metavar:
-            return self._metavar
-
-    def params(self, exclude=(), **kwargs):
+    def _params(self, exclude=(), **kwargs):
         exclude += ('dest',)
-        return super().params(exclude=exclude, **kwargs)
+        return super()._params(exclude=exclude, **kwargs)
 
-    def keys(self, prefix=None):
-        return [self.dest] if self.dest else []
+    def make_metavar(self):
+        return None
+
+    def make_options(self, *options: str, prefix=None, repl=None):
+        return [self.dest]

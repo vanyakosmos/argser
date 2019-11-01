@@ -1,39 +1,26 @@
 import logging
 import re
 import shlex
-from argparse import ArgumentParser, HelpFormatter, Namespace
-from collections import defaultdict
+from argparse import ArgumentParser, Namespace
 from typing import Any, List, Type
 
-from argser.consts import Args, SUB_COMMAND_DEST_FMT, SUB_COMMAND_MARK
-from argser.display import print_args, stringify
+from argser.consts import Args, SUB_COMMAND_MARK
+from argser.display import print_args, stringify, stringify_colored
 from argser.fields import Opt
 from argser.logging import VERBOSE
-from argser.utils import ColoredHelpFormatter, is_list_like_type
+from argser.formatters import ColoredHelpFormatter, HelpFormatter
 
 logger = logging.getLogger(__name__)
 
 
-def _get_nargs(typ, default):
-    # just list
-    if typ is list:
-        if len(default or []) == 0:
-            nargs = '*'
-            typ = str
-        else:
-            nargs = '+'
-            typ = type(default[0])
-        return typ, nargs
-    #  List or List[str] or similar
-    if is_list_like_type(typ):
-        if typ.__args__ and isinstance(typ.__args__[0], type):
-            typ = typ.__args__[0]
-        else:
-            typ = str
-        nargs = '*' if len(default or []) == 0 else '+'
-        return typ, nargs
-    # non list type
-    return typ, None
+def _collect_annotations(cls: type):
+    ann = getattr(cls, '__annotations__', {}).copy()  # don't modify class annotation
+    for base in cls.__bases__:
+        for name, typ in _collect_annotations(base).items():
+            # update without touching redefined values in inherited classes
+            if name not in ann:
+                ann[name] = typ
+    return ann
 
 
 def _get_fields(cls: Type[Args]):
@@ -56,32 +43,13 @@ def _get_fields(cls: Type[Args]):
     return fields
 
 
-def _get_type_and_nargs(ann: dict, field_name: str, default):
-    # get type from annotation or from default value or fallback to str
-    default_type = None if default is None else type(default)
-    typ = ann.get(field_name, default_type)
-    logger.log(VERBOSE, f"init type {typ}, default: {default}")
-    typ, nargs = _get_nargs(typ, default)
-    logger.log(VERBOSE, f"type {typ}, nargs {nargs!r}")
-    return typ, nargs
-
-
-def _collect_annotations(cls: type):
-    ann = getattr(cls, '__annotations__', {}).copy()  # don't modify class annotation
-    for base in cls.__bases__:
-        for name, typ in _collect_annotations(base).items():
-            # update without touching redefined values in inherited classes
-            if name not in ann:
-                ann[name] = typ
-    return ann
-
-
 def _read_args(
     args_cls: Type[Args],
+    parser_name='root',
     override=False,
     bool_flag=True,
-    one_dash=False,
-    replace_underscores=True,
+    prefix='--',
+    repl=('_', '-'),
 ):
     args = []
     sub_commands = {}
@@ -89,40 +57,61 @@ def _read_args(
     fields = _get_fields(args_cls)
     for key, value in fields.items():  # type: str, Any
         logger.log(VERBOSE, f"reading {key!r}")
+        annotation = ann.get(key)
+        dest = _join_names(parser_name, key)
+
         if hasattr(value, SUB_COMMAND_MARK):
             sub_commands[key] = _read_args(
                 value.__class__,
+                dest,
                 bool_flag=bool_flag,
-                one_dash=one_dash,
+                prefix=prefix,
+                repl=repl,
             )
             continue
         if isinstance(value, Opt):
-            typ, nargs = _get_type_and_nargs(ann, key, value.default)
-            value.dest = value.dest or key
-            value.type = value.type or typ
-            if value.action != 'append':
-                value.nargs = nargs if value.nargs is None else value.nargs
-            if override:
-                value.bool_flag = bool_flag
-                value.one_dash = one_dash
-                value.replace_underscores = replace_underscores
-            logger.log(VERBOSE, value.__dict__)
-            args.append(value)
-            continue
-        typ, nargs = _get_type_and_nargs(ann, key, value)
-        args.append(
-            Opt(
-                dest=key,
-                type=typ,
-                default=value,
-                nargs=nargs,
-                # extra
+            option = value
+            option.guess_type_and_nargs(annotation)
+            if not option.dest:
+                option.set_dest(dest)
+        else:
+            default, constructor, help = value, None, None
+            if isinstance(value, tuple):
+                if len(value) == 2:
+                    default, help = value
+                elif len(value) == 3:
+                    default, constructor, help = value
+                else:
+                    raise ValueError(
+                        f"invalid value for {key}. "
+                        f"Tuple structure should be: (default, help) or (default, constructor, help)"
+                    )
+            option = Opt(
+                dest=dest,
+                default=default,
+                help=help,
+                constructor=constructor,
                 bool_flag=bool_flag,
-                one_dash=one_dash,
-                replace_underscores=replace_underscores,
+                prefix=prefix,
+                repl=repl,
             )
-        )
+            option.guess_type_and_nargs(annotation)
+
+        if override:
+            option.bool_flag = bool_flag
+            option.prefix = prefix
+            option.repl = repl
+        logger.log(VERBOSE, option.__dict__)
+        args.append(option)
     return args_cls, args, sub_commands
+
+
+def _join_names(*names: str):
+    return '__'.join(names)
+
+
+def _uwrap(*names: str):
+    return f'__{_join_names(*names)}__'
 
 
 def _make_parser(name: str, args: List[Opt], sub_commands: dict, formatter_class=HelpFormatter, **kwargs):
@@ -138,16 +127,18 @@ def _make_parser(name: str, args: List[Opt], sub_commands: dict, formatter_class
     """
     logger.log(VERBOSE, f"parser {name}:\n - {args}\n - {sub_commands}")
     parser = ArgumentParser(formatter_class=formatter_class, **kwargs)
+    parser.prefix_chars = ''.join({a.prefix for a in args})  # get all possible prefixes
+
     for arg in args:
         arg.inject(parser)
 
     if not sub_commands:
         return parser
 
-    sub_parser = parser.add_subparsers(dest=SUB_COMMAND_DEST_FMT.format(name=name))
+    sub_parser = parser.add_subparsers(dest=_uwrap(name))
 
     for sub_name, (args_cls, args, sub_p) in sub_commands.items():
-        p = _make_parser(f'{name}_{sub_name}', args, sub_p)
+        p = _make_parser(_join_names(name, sub_name), args, sub_p, formatter_class)
         parser_kwargs = getattr(args_cls, '__kwargs', {})
         parser_kwargs.setdefault('formatter_class', formatter_class)
         sub_parser.add_parser(sub_name, parents=[p], add_help=False, **parser_kwargs)
@@ -166,16 +157,20 @@ def _set_values(parser_name: str, res: Args, namespace: Namespace, args: List[Op
     :param sub_commands:
     :return:
     """
-    logger.log(VERBOSE, f'setting values for: {res}')
+    logger.log(VERBOSE, f'setting values for: {parser_name} ~ {res}')
     for arg in args:
-        setattr(res, arg.dest, namespace.__dict__.get(arg.dest))
+        setattr(res, arg.name, namespace.__dict__.get(arg.dest))
+
     for name, (args_cls, args, sub_c) in sub_commands.items():
         # set values only if sub-command was chosen
-        if getattr(namespace, SUB_COMMAND_DEST_FMT.format(name=parser_name)) == name:
+        if getattr(namespace, _uwrap(parser_name)) == name:
             sub = getattr(res, name)
+            # Reinitialize instance of sub-command so that nullification of attribute would not touch
+            # original class and inner sub-commands. Mostly useful for tests.
+            sub = sub.__class__()
             setattr(res, name, sub)
-            sub_cmd_name = f'{parser_name}_{name}'
-            _set_values(sub_cmd_name, sub, namespace, args, sub_c)
+            sub_parser_name = _join_names(parser_name, name)
+            _set_values(sub_parser_name, sub, namespace, args, sub_c)
         # otherwise nullify sub-command
         else:
             setattr(res, name, None)
@@ -190,21 +185,21 @@ def _make_shortcut(name: str):
 
 def _make_shortcuts(args: List[Opt]):
     """
-    Add shortcuts to arguments without defined aliases.
-    todo: deal with duplicated names
+    Add shortcuts to arguments without defined options.
     """
-    used = defaultdict(lambda: False)
+    used = set()
     for arg in args:
-        for n in arg.names:
-            used[n] = True
+        for n in arg.option_names:
+            used.add(n)
     for arg in args:
-        if arg.aliases != ():
+        # user specified own options - skip shortcuts generation
+        if arg.option_names != [arg.name]:
             continue
-        a = _make_shortcut(arg.dest)
-        if used[a] > 0:
+        a = _make_shortcut(arg.name)
+        if a in used:
             continue
-        used[a] = True
-        arg.aliases = (a,)
+        used.add(a)
+        arg.option_names += [a]
 
 
 def _make_shortcuts_sub_wise(args: List[Opt], sub_commands: dict):
@@ -213,11 +208,12 @@ def _make_shortcuts_sub_wise(args: List[Opt], sub_commands: dict):
         _make_shortcuts_sub_wise(args, sub_p)
 
 
-def sub_command(args_cls: Type[Args], **kwargs) -> Args:
+def sub_command(args_cls: Type[Args], colorize=True, **kwargs) -> Args:
     """
     Add sub-command to the parser.
 
     :param args_cls: data holder
+    :param colorize: use colored formatter
     :param kwargs: additional parser kwargs
     :return: instance of :attr:`args_cls` with added metadata
 
@@ -228,8 +224,9 @@ def sub_command(args_cls: Type[Args], **kwargs) -> Args:
     >>> args = parse_args(Args, 'sub -a 2')
     >>> assert args.sub.a == 2
     """
-    setattr(args_cls, '__str__', stringify)
-    setattr(args_cls, '__repr__', stringify)
+    to_str = stringify_colored if colorize else stringify
+    setattr(args_cls, '__str__', to_str)
+    setattr(args_cls, '__repr__', to_str)
     setattr(args_cls, '__kwargs', kwargs)
     setattr(args_cls, SUB_COMMAND_MARK, True)
     return args_cls()
@@ -247,16 +244,16 @@ def _setup_argcomplete(parser, **kwargs):
         import argcomplete
         argcomplete.autocomplete(parser, **kwargs)
     except ImportError:
-        logger.log(VERBOSE, "argcomplete is not installed")
+        logger.debug("Argcomplete is not installed. Skipping integration.")
 
 
 def make_parser(
     args_cls: Type[Args],
     colorize=True,
     make_shortcuts=True,
-    replace_underscores=True,
     bool_flag=True,
-    one_dash=False,
+    prefix='--',
+    repl=('_', '-'),
     override=False,
     parser_kwargs=None,
     argcomplete_kwargs=None,
@@ -268,11 +265,12 @@ def make_parser(
     :param args_cls: class with defined arguments
     :param colorize: add colors to the help message and arguments printing
     :param make_shortcuts: make short version of arguments: ``--abc -> -a``, ``--abc_def -> --ad``
-    :param replace_underscores: replace underscores in argument names with dashes
     :param bool_flag:
         if True then read bool from argument flag: ``--arg`` is True, ``--no-arg`` is False,
         otherwise check if arg value and truthy or falsy: `--arg 1` is True `--arg no` is False
-    :param one_dash: use one dash for long names: `-`name`` instead of ``--name``
+    :param prefix: default prefix before options. For ``--``: ``aaa -> --aaa``, ``b -> -b``
+    :param repl: auto-replace some char with another char in option names.
+           For ``('_', '-')``: ``lang_name -> lang-name``
     :param override: override values above on Arg's
     :param parser_kwargs: root parser kwargs
     :param argcomplete_kwargs: argcomplete kwargs
@@ -288,13 +286,13 @@ def make_parser(
         args_cls,
         override=override,
         bool_flag=bool_flag,
-        one_dash=one_dash,
-        replace_underscores=replace_underscores,
+        prefix=prefix,
+        repl=repl,
     )
     if make_shortcuts:
         _make_shortcuts_sub_wise(args, sub_commands)
-    if colorize:
-        parser_kwargs.setdefault('formatter_class', ColoredHelpFormatter)
+    help_fmt_cls = ColoredHelpFormatter if colorize else HelpFormatter
+    parser_kwargs.setdefault('formatter_class', help_fmt_cls)
     parser = _make_parser('root', args, sub_commands, **parser_kwargs)
     _setup_argcomplete(parser, **argcomplete_kwargs)
     return parser, (args, sub_commands)
@@ -322,7 +320,7 @@ def populate_holder(parser: ArgumentParser, args_cls: Type[Args], options: tuple
 
 
 def parse_args(
-    args_cls,
+    args_cls: Type[Args],
     args=None,
     *,
     show=None,
@@ -331,7 +329,7 @@ def parse_args(
     shorten=False,
     tabulate_kwargs=None,
     **kwargs,
-):
+) -> Args:
     """
     Parse arguments from string or command line and return populated instance of `args_cls`.
 
@@ -358,7 +356,7 @@ def parse_args(
     >>> args = parse_args(Args, '-a 1 -b 2.2 --no-c')
     >>> assert args.a == 1 and args.b == 2.2 and args.c is False
     """
-    parser, options = make_parser(args_cls, **kwargs)
+    parser, options = make_parser(args_cls, colorize=colorize, **kwargs)
     result = populate_holder(parser, args_cls, options, args)
 
     tabulate_kwargs = tabulate_kwargs or {}

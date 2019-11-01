@@ -1,6 +1,7 @@
-import re
 import sys
 from pathlib import Path
+
+import argser
 
 root = Path(__file__).parents[2]
 package_dir = root / 'argser'
@@ -12,13 +13,8 @@ project = 'argser'
 copyright = '2019, Bachynin Ivan'
 author = 'Bachynin Ivan'
 
-# The full version, including alpha/beta/rc tags
-with open(root / 'pyproject.toml', 'r') as f:
-    version = re.search(r'version\s+=\s+"(.*)"', f.read(), flags=re.MULTILINE).group(1)
-
 # The full version, including alpha/beta/rc tags.
-print('version', version)
-release = version
+release = argser.__version__
 
 # -- General configuration ---------------------------------------------------
 

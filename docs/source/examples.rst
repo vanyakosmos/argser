@@ -44,6 +44,7 @@ Arguments
 *********
 
 str / int / float
+-----------------
 
 .. doctest::
 
@@ -61,6 +62,7 @@ str / int / float
 
 
 booleans
+--------
 
 .. doctest::
 
@@ -84,6 +86,7 @@ booleans
 
 
 lists
+-----
 
 .. doctest::
 
@@ -109,6 +112,7 @@ lists
 
 
 positional arguments
+--------------------
 
 .. doctest::
 
@@ -123,22 +127,24 @@ positional arguments
     >>> assert args.b == 'foo bar'
 
 
-one dash
+different prefixes
+------------------
 
 .. doctest::
 
     >>> from argser import Opt
 
     >>> class Args:
-    ...     aaa: int = Opt(one_dash=False)
-    ...     bbb: int = Opt(one_dash=True)
+    ...     aaa: int = Opt(prefix='-')
+    ...     bbb: int = Opt(prefix='++')
     
-    >>> args = parse_args(Args, '--aaa 42 -bbb 42')
+    >>> args = parse_args(Args, '-aaa 42 ++bbb 42')
     >>> assert args.aaa == 42
     >>> assert args.bbb == 42
 
 
 argparse params
+---------------
 
 .. doctest::
 
@@ -154,6 +160,28 @@ argparse params
     >>> assert args.a == 'foo'
     >>> assert args.b == 3
     >>> assert args.c == [1, 2]
+
+
+constructors
+------------
+
+.. doctest::
+
+    >>> from argser import Opt
+
+    >>> def make_a(a: str):
+    ...     return int(a) + 42
+
+    >>> def make_b(b: str):
+    ...     return b + '42'
+
+    >>> class Args:
+    ...     a: int = Opt(constructor=make_a)
+    ...     b = 'default', make_b, "help message for be"
+
+    >>> args = parse_args(Args, '-a 2 -b "foo"')
+    >>> assert args.a == 44
+    >>> assert args.b == "foo42"
 
 
 Actions
@@ -239,6 +267,7 @@ Call function with parsed arguments
     ... ]
 
 Or as decorator:
+----------------
 
 .. doctest::
 
@@ -252,6 +281,7 @@ In examples above ``a`` (implicit string) and ``b`` (int) are positional argumen
 
 
 Multiple sub-commands:
+----------------------
 
 .. doctest::
 
@@ -268,6 +298,78 @@ Multiple sub-commands:
     'foo'
     >>> subs.parse('bar 1 2')
     ['1', 2]
+
+
+Override options globally
+*************************
+
+.. doctest::
+
+    >>> import argser
+    >>> class Args:
+    ...     a = 1
+    ...     b = True
+    ...     ccc_ddd = 'foo'
+
+    >>> args = argser.parse_args(
+    ...     Args,
+    ...     '+a 42 +b false +ccc+ddd "foo bar"',  # read from command if None
+    ...     make_shortcuts=False,  # +ccc+ddd will not generate cd now
+    ...     bool_flag=False,  # bool arg will require bool value near flag
+    ...     prefix='+',  # change default prefix
+    ...     repl=('_', '+'),  # change auto-replacer options (from, to)
+    ...     override=True,  # only required if you need to override args defined with Opt/Arg
+    ... )
+
+    >>> assert args.a == 42
+    >>> assert args.b is False
+    >>> assert args.ccc_ddd == 'foo bar'
+
+
+Display arguments
+*****************
+
+.. doctest::
+    
+    >>> from argser import sub_command, parse_args  
+    >>> class Args:
+    ...     a = 1
+    ...     b = 'foo'
+    ...     class Sub:
+    ...         a = 'foo bar'
+    ...     sub = sub_command(Sub)
+    >>> args = parse_args(
+    ...     Args,
+    ...     '-a 42 sub -a "fooooooooo baaaaaaaaaaaaaaar baaaaaaaaaaaaaaar"',
+    ...     show='table',
+    ... )
+    arg    value     arg     value                       
+    -----  -------   ------  ----------------------------
+    a      42        sub__a  fooooooooo baaaaaaaaaaaaaaar
+    b      foo               baaaaaaaaaaaaaaar           
+
+
+Or in one line:
+
+.. doctest::
+    
+    >>> args = parse_args(  
+    ...     Args,
+    ...     '-a 42 sub -a "fooooooooo baaaaaaaaaaaaaaar baaaaaaaaaaaaaaar"',
+    ...     show=True,
+    ... )
+    Args(a=42, b='foo', sub=Sub(a='fooooooooo baaaaaaaaaaaaaaar baaaaaaaaaaaaaaar'))
+    
+Or after parsing:
+
+.. doctest::
+
+    >>> from argser import print_args
+    >>> print_args(args, 'table')
+    arg    value     arg     value                       
+    -----  -------   ------  ----------------------------
+    a      42        sub__a  fooooooooo baaaaaaaaaaaaaaar
+    b      foo               baaaaaaaaaaaaaaar   
 
 
 Auto completion
