@@ -1,4 +1,4 @@
-__version__ = "0.0.11"
+__version__ = "0.0.12"
 
 from argser.consts import FALSE_VALUES, TRUE_VALUES
 from argser.display import stringify, print_args
