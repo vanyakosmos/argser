@@ -245,3 +245,10 @@ def test_pick_constructor():
     assert Opt()._pick_constructor(None) is None
     with pytest.raises(ValueError):
         Opt()._pick_constructor(1, 2, 3)
+
+
+def test_pretty_format():
+    o = Opt(dest='oo', default=1, help="foo")
+    o.guess_type_and_nargs(int)
+    o.option_names = ['o', 'oo']
+    assert o.pretty_format().startswith("Opt(-o, --oo,\n")
