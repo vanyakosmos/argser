@@ -5,7 +5,7 @@ from argparse import ArgumentParser, Namespace
 from typing import Any, List, Type
 
 from argser.consts import Args, SUB_COMMAND_MARK
-from argser.display import print_args, stringify, stringify_colored
+from argser.display import print_args, stringify
 from argser.fields import Opt
 from argser.logging import VERBOSE
 from argser.formatters import ColoredHelpFormatter, HelpFormatter
@@ -219,13 +219,12 @@ def _make_shortcuts_sub_wise(args: List[Opt], sub_commands: dict):
         _make_shortcuts_sub_wise(args, sub_p)
 
 
-def sub_command(args_cls: Type[Args], parser=None, colorize=True, **kwargs) -> Args:
+def sub_command(args_cls: Type[Args], parser=None, **kwargs) -> Args:
     """
     Add sub-command to the parser.
 
     :param args_cls: data holder
     :param parser: predefined parser
-    :param colorize: use colored formatter
     :param kwargs: additional parser kwargs
     :return: instance of :attr:`args_cls` with added metadata
 
@@ -236,9 +235,8 @@ def sub_command(args_cls: Type[Args], parser=None, colorize=True, **kwargs) -> A
     >>> args = parse_args(Data, 'sub -a 2')
     >>> assert args.sub.a == 2
     """
-    to_str = stringify_colored if colorize else stringify
-    setattr(args_cls, '__str__', to_str)
-    setattr(args_cls, '__repr__', to_str)
+    setattr(args_cls, '__str__', stringify)
+    setattr(args_cls, '__repr__', stringify)
     setattr(args_cls, '__parser', parser)
     setattr(args_cls, '__kwargs', kwargs)
     setattr(args_cls, SUB_COMMAND_MARK, True)
@@ -263,7 +261,6 @@ def _setup_argcomplete(parser, **kwargs):
 def make_parser(
     args_cls: Type[Args],
     parser=None,
-    colorize=True,
     make_shortcuts=True,
     bool_flag=True,
     prefix='--',
@@ -278,7 +275,6 @@ def make_parser(
 
     :param args_cls: class with defined arguments
     :param parser: predefined parser
-    :param colorize: add colors to the help message and arguments printing
     :param make_shortcuts: make short version of arguments: ``--abc -> -a``, ``--abc_def -> --ad``
     :param bool_flag:
         if True then read bool from argument flag: ``--arg`` is True, ``--no-arg`` is False,
@@ -305,8 +301,7 @@ def make_parser(
     # setup parser
     parser_kwargs = parser_kwargs or {}
     _add_prefixed_key(kwargs, parser_kwargs, 'parser_')
-    help_fmt_cls = ColoredHelpFormatter if colorize else HelpFormatter
-    parser_kwargs.setdefault('formatter_class', help_fmt_cls)
+    parser_kwargs.setdefault('formatter_class', ColoredHelpFormatter)
     parser = _make_parser('root', args, sub_commands, parser=parser, **parser_kwargs)
     # argcomplete
     argcomplete_kwargs = argcomplete_kwargs or {}
@@ -343,7 +338,6 @@ def parse_args(
     *,
     show=None,
     print_fn=None,
-    colorize=True,
     shorten=False,
     tabulate_kwargs=None,
     **kwargs,
@@ -358,7 +352,6 @@ def parse_args(
         if truthy value - print arguments in one line
         if falsy value - don't print anything
     :param print_fn:
-    :param colorize: add colors to the help message and arguments printing
     :param shorten: shorten long text (eg long default value)
     :param tabulate_kwargs: tabulate additional kwargs + some custom fields:
         cols: number of columns. Can be 'auto' - len(args)/N, int - just number of columns,
@@ -374,11 +367,11 @@ def parse_args(
     >>> args = parse_args(Data, '-a 1 -b 2.2 --no-c')
     >>> assert args.a == 1 and args.b == 2.2 and args.c is False
     """
-    parser, options = make_parser(args_cls, colorize=colorize, **kwargs)
+    parser, options = make_parser(args_cls, **kwargs)
     result = populate_holder(parser, args_cls, options, args)
 
     tabulate_kwargs = tabulate_kwargs or {}
     _add_prefixed_key(kwargs, tabulate_kwargs, 'tabulate_')
     if show:
-        print_args(result, variant=show, print_fn=print_fn, colorize=colorize, shorten=shorten, **tabulate_kwargs)
+        print_args(result, variant=show, print_fn=print_fn, shorten=shorten, **tabulate_kwargs)
     return result

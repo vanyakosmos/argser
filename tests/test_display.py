@@ -20,12 +20,12 @@ def test_prints():
 
         sub = sub_command(Sub)
 
-    parse_args(Args, '', show=True, colorize=True, shorten=True)
-    parse_args(Args, '', show=True, colorize=False, shorten=True)
+    parse_args(Args, '', show=True, shorten=True)
+    parse_args(Args, '', show=True, shorten=True)
     args = parse_args(Args, '', show=True)
     assert args.a == '1'
 
-    parse_args(Args, '', show='table', colorize=False, shorten=True)
+    parse_args(Args, '', show='table', shorten=True)
     args = parse_args(Args, '-a 5 sub', show='table', tabulate_preset='fancy')
     assert args.a == '5'
     assert args.sub.f is True
@@ -33,7 +33,7 @@ def test_prints():
 
 def test_wide_table():
     class Args:
-        a1 = 1
+        a1 = None
         a2 = 1
         a3 = '1'
         a4 = 1
@@ -62,16 +62,16 @@ def test_wide_table():
         sub = sub_command(Sub)
 
     args = parse_args(Args, 'sub sub2')
-    table = make_table(args, cols=None, colorize=False)
+    table = make_table(args, cols=None)
     assert len(table.splitlines()[0]) < 40
 
-    table = make_table(args, cols='auto', colorize=False)
+    table = make_table(args, cols='auto')
     assert len(table.splitlines()[0]) > 40
 
-    table = make_table(args, cols=1, colorize=False)
+    table = make_table(args, cols=1)
     assert len(table.splitlines()[0]) < 40
 
-    table = make_table(args, cols=3, colorize=False)
+    table = make_table(args, cols=3)
     assert len(table.splitlines()[0]) > 40
 
     # be careful with trailing spaces after sub__a5 [1, 2]
@@ -79,7 +79,7 @@ def test_wide_table():
         """
         arg    value     arg      value     arg              value
         -----  -------   -------  -------   -------------  -------
-        a1     1         a7       1         sub__a7              1
+        a1     -         a7       1         sub__a7              1
         a2     1         sub__a1  1         sub__a8              1
         a3     1         sub__a2  1         sub__a9              1
         a4     1         sub__a3  1         sub__sub2__b1        2
@@ -90,14 +90,14 @@ def test_wide_table():
     )
     assert table.strip('\n ') == result.strip('\n ')
 
-    table = make_table(args, cols='sub', colorize=False)
+    table = make_table(args, cols='sub')
     assert len(table.splitlines()[0]) > 40
 
-    table = make_table(args, cols='sub-auto', colorize=False)
+    table = make_table(args, cols='sub-auto')
     assert len(table.splitlines()[0]) > 40
 
-    table = make_table(args, cols='sub-3', colorize=False)
+    table = make_table(args, cols='sub-3')
     assert len(table.splitlines()[0]) > 40
 
-    table = make_table(args, preset='fancy', colorize=False)
+    table = make_table(args, preset='fancy')
     assert len(table.splitlines()[0]) > 40

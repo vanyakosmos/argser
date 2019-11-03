@@ -11,19 +11,6 @@ from argser.utils import colors, vlen, args_to_dict
 def stringify(args: Args, shorten=False):
     def pair(x):
         k, v = x
-        if shorten:
-            v = textwrap.shorten(str(v), width=20, placeholder='...')
-        v = repr(v)
-        return f"{k}={v}"
-
-    pairs = ', '.join(map(pair, args_to_dict(args).items()))
-    cls_name = args.__class__.__name__
-    return f"{cls_name}({pairs})"
-
-
-def stringify_colored(args: Args, shorten=False):
-    def pair(x):
-        k, v = x
         if v is None:
             v = colors.red('-')
         else:
@@ -104,26 +91,25 @@ def _colorize(data, kwargs):
     for i, (key, value) in enumerate(data):
         if value is None:
             value = colors.red('-')
+        else:
+            value = str(value)
         data[i] = colors.green(key), value
 
 
-def make_table(args: Args, preset=None, cols='sub-auto', gap='   ', colorize=True, shorten=False, **kwargs):
+def make_table(args: Args, preset=None, cols='sub-auto', gap='   ', shorten=False, **kwargs):
     from tabulate import tabulate
     kwargs.setdefault('headers', ['arg', 'value'])
     data = _get_table(args)
 
-    if colorize:
-        _colorize(data, kwargs)
+    _colorize(data, kwargs)
+    # at this point all keys and values in data are strings
 
     for i, (key, value) in enumerate(data):
-        if value is None:
-            value = '-'
+        if shorten:
+            value = textwrap.shorten(value, width=40, placeholder='...')
         else:
-            value = str(value)
-            if shorten:
-                value = textwrap.shorten(value, width=40, placeholder='...')
-            else:
-                value = textwrap.fill(value, width=40)
+            value = textwrap.shorten(value, width=400, placeholder='...')
+            value = textwrap.fill(value, width=40)
         data[i] = key, value
 
     if preset == 'fancy':
@@ -142,7 +128,7 @@ def make_table(args: Args, preset=None, cols='sub-auto', gap='   ', colorize=Tru
     return _merge_str_cols(parts, gap)
 
 
-def print_args(args: Args, variant=None, print_fn=None, colorize=True, shorten=False, **kwargs):
+def print_args(args: Args, variant=None, print_fn=None, shorten=False, **kwargs):
     """
     Pretty print out data from :attr:`args`.
 
@@ -151,7 +137,6 @@ def print_args(args: Args, variant=None, print_fn=None, colorize=True, shorten=F
         if 'table' - print arguments as table
         otherwise print arguments in one line
     :param print_fn:
-    :param colorize: add colors to the help message and arguments printing
     :param shorten: shorten long text (eg long default value)
     :param kwargs: additional kwargs for tabulate + some custom fields:
         cols: number of columns. Can be 'auto' - len(args)/N, int - just number of columns,
@@ -159,9 +144,8 @@ def print_args(args: Args, variant=None, print_fn=None, colorize=True, shorten=F
         gap: string, space between tables/columns
     """
     if variant == 'table':
-        s = make_table(args, colorize=colorize, shorten=shorten, **kwargs)
+        s = make_table(args, shorten=shorten, **kwargs)
     else:
-        to_str = stringify_colored if colorize else stringify
-        s = to_str(args, shorten)
+        s = stringify(args, shorten)
     print_fn = print_fn or print
     print_fn(s)
