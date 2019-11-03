@@ -4,7 +4,7 @@ from functools import partial
 
 import termcolor
 
-from argser.consts import FALSE_VALUES, TRUE_VALUES
+from argser.consts import FALSE_VALUES, TRUE_VALUES, Args
 
 RE_INV_CODES = re.compile(r"\x1b\[\d+[;\d]*m|\x1b\[\d*;\d*;\d*m")
 
@@ -50,3 +50,10 @@ class colors:
     yellow = partial(colored, color='yellow')
     blue = partial(colored, color='blue')
     no = partial(lambda x: x)  # partial will prevent 'self' injection when called from ColoredHelpFormatter
+
+
+def args_to_dict(args: Args) -> dict:
+    res = args.__dict__.copy()
+    if '__namespace__' in res:
+        del res['__namespace__']
+    return res

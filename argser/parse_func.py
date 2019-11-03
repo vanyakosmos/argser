@@ -1,8 +1,10 @@
 import inspect
 
 from types import FunctionType
+
 from argser.fields import Arg, Opt
 from argser.parser import parse_args, sub_command
+from argser.utils import args_to_dict
 
 
 def _get_default_args(func):
@@ -32,7 +34,8 @@ def _call(func: FunctionType, *parser_args, **parser_kwargs):
     Args = _make_args_cls(func)
     parser_kwargs.setdefault('parser_prog', func.__name__)
     args = parse_args(Args, *parser_args, **parser_kwargs)
-    return func(**args.__dict__)
+    data = args_to_dict(args)
+    return func(**data)
 
 
 def call(func=None, *args, **kwargs):
@@ -113,4 +116,5 @@ class SubCommands:
         for name in self.commands:
             sub_args = getattr(args, name, None)
             if sub_args is not None:
-                return self.functions[name](**sub_args.__dict__)
+                data = args_to_dict(sub_args)
+                return self.functions[name](**data)

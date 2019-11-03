@@ -28,9 +28,9 @@ def _get_fields(cls: Type[Args]):
     fields_with_value = {
         key: value
         for key, value in cls.__dict__.items()
-        if not key.startswith('__') and not isinstance(value, type)  # skip built-ins and inner classes
+        if not key.startswith('_') and not isinstance(value, type)  # skip built-ins and inner classes
     }
-    fields = {k: None for k in ann if k not in fields_with_value}
+    fields = {k: None for k in ann if k not in fields_with_value and not k.startswith('_')}
     fields.update(**fields_with_value)
     # get fields from bases classes
     for base in cls.__bases__:
@@ -103,6 +103,7 @@ def _read_args(
             option.repl = repl
         logger.log(VERBOSE, option.__dict__)
         args.append(option)
+        setattr(args_cls, key, option)
     return args_cls, args, sub_commands
 
 
@@ -114,7 +115,15 @@ def _uwrap(*names: str):
     return f'__{_join_names(*names)}__'
 
 
-def _make_parser(name: str, args: List[Opt], sub_commands: dict, formatter_class=HelpFormatter, **kwargs):
+def _make_parser(
+    name: str,
+    args: List[Opt],
+    sub_commands: dict,
+    *,
+    parser=None,
+    formatter_class=HelpFormatter,
+    **kwargs,
+):
     """
     Recursively make parser and sub-parsers.
 
@@ -125,8 +134,8 @@ def _make_parser(name: str, args: List[Opt], sub_commands: dict, formatter_class
     :param kwargs:
     :return:
     """
-    logger.log(VERBOSE, f"parser {name}:\n - {args}\n - {sub_commands}")
-    parser = ArgumentParser(formatter_class=formatter_class, **kwargs)
+    logger.log(VERBOSE, f"parser {name}:\n - {args}\n - {sub_commands}\n - {parser}")
+    parser = parser or ArgumentParser(formatter_class=formatter_class, **kwargs)
     parser.prefix_chars = ''.join({a.prefix for a in args})  # get all possible prefixes
 
     for arg in args:
@@ -138,9 +147,11 @@ def _make_parser(name: str, args: List[Opt], sub_commands: dict, formatter_class
     sub_parser = parser.add_subparsers(dest=_uwrap(name))
 
     for sub_name, (args_cls, args, sub_p) in sub_commands.items():
-        p = _make_parser(_join_names(name, sub_name), args, sub_p, formatter_class)
+        p = getattr(args_cls, '__parser', None)
         parser_kwargs = getattr(args_cls, '__kwargs', {})
         parser_kwargs.setdefault('formatter_class', formatter_class)
+
+        p = _make_parser(_join_names(name, sub_name), args, sub_p, parser=p, formatter_class=formatter_class)
         sub_parser.add_parser(sub_name, parents=[p], add_help=False, **parser_kwargs)
 
     return parser
@@ -208,25 +219,27 @@ def _make_shortcuts_sub_wise(args: List[Opt], sub_commands: dict):
         _make_shortcuts_sub_wise(args, sub_p)
 
 
-def sub_command(args_cls: Type[Args], colorize=True, **kwargs) -> Args:
+def sub_command(args_cls: Type[Args], parser=None, colorize=True, **kwargs) -> Args:
     """
     Add sub-command to the parser.
 
     :param args_cls: data holder
+    :param parser: predefined parser
     :param colorize: use colored formatter
     :param kwargs: additional parser kwargs
     :return: instance of :attr:`args_cls` with added metadata
 
-    >>> class Args:
-    ...     class Sub:
-    ...         a = 1
+    >>> class Sub:
+    ...     a = 1
+    >>> class Data:
     ...     sub = sub_command(Sub)
-    >>> args = parse_args(Args, 'sub -a 2')
+    >>> args = parse_args(Data, 'sub -a 2')
     >>> assert args.sub.a == 2
     """
     to_str = stringify_colored if colorize else stringify
     setattr(args_cls, '__str__', to_str)
     setattr(args_cls, '__repr__', to_str)
+    setattr(args_cls, '__parser', parser)
     setattr(args_cls, '__kwargs', kwargs)
     setattr(args_cls, SUB_COMMAND_MARK, True)
     return args_cls()
@@ -249,6 +262,7 @@ def _setup_argcomplete(parser, **kwargs):
 
 def make_parser(
     args_cls: Type[Args],
+    parser=None,
     colorize=True,
     make_shortcuts=True,
     bool_flag=True,
@@ -263,6 +277,7 @@ def make_parser(
     Create arguments parser based on :attr:`args_cls`.
 
     :param args_cls: class with defined arguments
+    :param parser: predefined parser
     :param colorize: add colors to the help message and arguments printing
     :param make_shortcuts: make short version of arguments: ``--abc -> -a``, ``--abc_def -> --ad``
     :param bool_flag:
@@ -277,10 +292,6 @@ def make_parser(
     :param kwargs: additional params for parser or argcomplete, should be prefixed with target name
     :return: instance of ArgumentParser and tuple with options (main_options, sub_command_options)
     """
-    parser_kwargs = parser_kwargs or {}
-    _add_prefixed_key(kwargs, parser_kwargs, 'parser_')
-    argcomplete_kwargs = argcomplete_kwargs or {}
-    _add_prefixed_key(kwargs, argcomplete_kwargs, 'argcomplete_')
 
     args_cls, args, sub_commands = _read_args(
         args_cls,
@@ -291,9 +302,15 @@ def make_parser(
     )
     if make_shortcuts:
         _make_shortcuts_sub_wise(args, sub_commands)
+    # setup parser
+    parser_kwargs = parser_kwargs or {}
+    _add_prefixed_key(kwargs, parser_kwargs, 'parser_')
     help_fmt_cls = ColoredHelpFormatter if colorize else HelpFormatter
     parser_kwargs.setdefault('formatter_class', help_fmt_cls)
-    parser = _make_parser('root', args, sub_commands, **parser_kwargs)
+    parser = _make_parser('root', args, sub_commands, parser=parser, **parser_kwargs)
+    # argcomplete
+    argcomplete_kwargs = argcomplete_kwargs or {}
+    _add_prefixed_key(kwargs, argcomplete_kwargs, 'argcomplete_')
     _setup_argcomplete(parser, **argcomplete_kwargs)
     return parser, (args, sub_commands)
 
@@ -316,6 +333,7 @@ def populate_holder(parser: ArgumentParser, args_cls: Type[Args], options: tuple
     result = sub_command(args_cls)
     args, sub_commands = options
     _set_values('root', result, namespace, args, sub_commands)
+    setattr(result, '__namespace__', namespace)
     return result
 
 
@@ -346,14 +364,14 @@ def parse_args(
         cols: number of columns. Can be 'auto' - len(args)/N, int - just number of columns,
         'sub' / 'sub-auto' / 'sub-INT' - split by sub-commands,
         gap: string, space between tables/columns
-    :param kwargs: parameters for parser generation.
+    :param kwargs: parameters for parser generation. Check out :func:`make_parser` for more params
     :return: instance of :attr:`args_cls` with populated attributed based of command line arguments.
 
-    >>> class Args:
+    >>> class Data:
     ...     a: int
     ...     b = 4.5
     ...     c = True
-    >>> args = parse_args(Args, '-a 1 -b 2.2 --no-c')
+    >>> args = parse_args(Data, '-a 1 -b 2.2 --no-c')
     >>> assert args.a == 1 and args.b == 2.2 and args.c is False
     """
     parser, options = make_parser(args_cls, colorize=colorize, **kwargs)

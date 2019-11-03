@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# script with shortcuts
 
 set -e
 
