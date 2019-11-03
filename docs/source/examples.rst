@@ -372,6 +372,50 @@ Or after parsing:
     b      foo               baaaaaaaaaaaaaaar   
 
 
+Using existing parser
+*********************
+
+.. doctest::
+
+    >>> from argparse import ArgumentParser, Namespace
+    >>> parser = ArgumentParser(prog='prog')
+    >>> action = parser.add_argument('--foo', default=42, type=int)
+
+    >>> class Args:
+    ...     __namespace__: Namespace  # just for hints in IDE
+    ...     a = 1
+    ...     b = True
+
+    >>> args = parse_args(Args, '--foo 100 -a 5 --no-b', parser=parser, parser_prog='WILL NOT BE USED')
+    >>> args.a, args.b
+    (5, False)
+    >>> args.__namespace__.foo
+    100
+
+
+Inspection
+**********
+
+After parsing each attribute of parsed class will be replaced with populated instance of :class:`argser.fields.Opt`.
+
+.. doctest::
+
+    >>> class Args:
+    ...     a: bool
+    ...     b = 1, "help for a"
+
+    >>> args = parse_args(Args, '--no-a -b 2')
+
+    >>> assert isinstance(Args.a, Opt)
+    >>> assert Args.a.type is bool
+    >>> assert args.a is False
+
+    >>> assert isinstance(Args.b, Opt)
+    >>> assert Args.b.type is int
+    >>> assert Args.b.help == "help for a"
+    >>> assert args.b == 2
+
+
 Auto completion
 ***************
 

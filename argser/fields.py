@@ -1,5 +1,6 @@
 import logging
 import re
+import textwrap
 from argparse import ArgumentParser, SUPPRESS
 from functools import partial
 from typing import Tuple, Optional, List
@@ -70,12 +71,25 @@ class Opt:
         self.extra = kwargs
 
     def __str__(self):
+        cls_name = self.__class__.__name__
         names = ', '.join(self.options) or '-'
         type_name = getattr(self.type, '__name__', None)
-        return f"Arg({names}, type={type_name}, default={self.default!r})"
+        return f"{cls_name}({names}, type={type_name}, default={self.default!r})"
 
     def __repr__(self):
         return str(self)
+
+    def pretty_format(self):
+        # moved from __repr__ because it is too long
+        cls_name = self.__class__.__name__
+        start = f'{cls_name}('
+        names = ', '.join(self.options) or '-'
+        pairs = [names]
+        for field, value in self.__dict__.items():
+            pairs.append(f'{field}={value!r}')
+        pairs = ',\n'.join(pairs)
+        pairs = textwrap.indent(pairs, ' ' * len(start)).strip()
+        return f'{start}{pairs})'
 
     @property
     def name(self):

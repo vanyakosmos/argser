@@ -5,7 +5,7 @@ from collections import defaultdict
 from typing import List
 
 from argser.consts import Args, SUB_COMMAND_MARK
-from argser.utils import colors, vlen
+from argser.utils import colors, vlen, args_to_dict
 
 
 def stringify(args: Args, shorten=False):
@@ -16,7 +16,7 @@ def stringify(args: Args, shorten=False):
         v = repr(v)
         return f"{k}={v}"
 
-    pairs = ', '.join(map(pair, args.__dict__.items()))
+    pairs = ', '.join(map(pair, args_to_dict(args).items()))
     cls_name = args.__class__.__name__
     return f"{cls_name}({pairs})"
 
@@ -32,14 +32,14 @@ def stringify_colored(args: Args, shorten=False):
             v = repr(v)
         return f"{colors.green(k)}={v}"
 
-    pairs = ', '.join(map(pair, args.__dict__.items()))
+    pairs = ', '.join(map(pair, args_to_dict(args).items()))
     cls_name = colors.yellow(args.__class__.__name__)
     return f"{cls_name}({pairs})"
 
 
 def _get_table(args: Args):
     data = []
-    for key, value in args.__dict__.items():
+    for key, value in args_to_dict(args).items():
         if hasattr(value.__class__, SUB_COMMAND_MARK):
             sub_data = _get_table(value)
             data.extend([(f"{key}__{k}", v) for k, v in sub_data])

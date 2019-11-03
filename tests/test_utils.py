@@ -41,7 +41,7 @@ class TestHelpFormatting:
             class Sub:
                 b = Arg()
 
-            sub = sub_command(Sub, 'sub help')
+            sub = sub_command(Sub, help='sub help')
 
         self.compare(
             Args,
@@ -51,6 +51,7 @@ class TestHelpFormatting:
             positional arguments:
                 a           str. a help
                 {sub}
+                    sub     sub help
             
             optional arguments:
                 -h, --help  show this help message and exit

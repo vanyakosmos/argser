@@ -1,11 +1,14 @@
-from argparse import Action
+import shlex
+from argparse import Action, ArgumentParser, Namespace
 from typing import Callable, List
 
 import pytest
 
+import argser
 from argser import Arg, Opt, parse_args, sub_command
 # noinspection PyProtectedMember
 from argser.parser import _make_shortcuts_sub_wise, _read_args
+from argser.utils import args_to_dict
 
 
 def test_simple():
@@ -186,68 +189,81 @@ def test_parse_float():
         parse_args(Args, '-a a')
 
 
-def test_parse_bool():
-    class Args:
-        a: bool
-        b = True
-        c = False
-        d = [True, False]
+class TestBooleans:
+    @property
+    def args_cls(self):
+        class Args:
+            a: bool
+            b = True
+            c = False
+            d = [True, False]
 
-    args = parse_args(Args, [])
-    assert args.a is None
-    assert args.b is True
-    assert args.c is False
+        return Args
 
-    args = parse_args(Args, '-a', bool_flag=True)
-    assert args.a is True
-    args = parse_args(Args, '--no-a', bool_flag=True)
-    assert args.a is False
-    args = parse_args(Args, '-no-a', bool_flag=True, prefix='-')
-    assert args.a is False
+    def test_default(self):
+        args = parse_args(self.args_cls, [])
+        assert args.a is None
+        assert args.b is True
+        assert args.c is False
 
-    args = parse_args(Args, '-no-b -c', bool_flag=True, prefix='-')
-    assert args.b is False
-    assert args.c is True
+    def test_bool_flag_true(self):
+        args = parse_args(self.args_cls, '-a', bool_flag=True)
+        assert args.a is True
+        args = parse_args(self.args_cls, '--no-a', bool_flag=True)
+        assert args.a is False
+        args = parse_args(self.args_cls, '-no-a', bool_flag=True, prefix='-')
+        assert args.a is False
+        args = parse_args(self.args_cls, '-no-b -c', bool_flag=True, prefix='-')
+        assert args.b is False
+        assert args.c is True
 
-    args = parse_args(Args, '-a 1 -b false -c yes', bool_flag=False)
-    assert args.a is True
-    assert args.b is False
-    assert args.c is True
+    def test_bool_flag_false(self):
+        args = parse_args(self.args_cls, '-a 1 -b false -c yes', bool_flag=False)
+        assert args.a is True
+        assert args.b is False
+        assert args.c is True
 
-    with pytest.raises(SystemExit):
-        parse_args(Args, '-a a', bool_flag=False)
-
-    # trigger help
-    with pytest.raises(SystemExit):
-        parse_args(Args, '-h')
+        with pytest.raises(SystemExit):
+            parse_args(self.args_cls, '-a a', bool_flag=False)
 
 
 class TestList:
-    def test_default(self, list_args):
-        args = list_args('')
+    @property
+    def args_cls(self):
+        class Args:
+            a: list
+            b: List
+            c: List[int]
+            d: List[bool] = []
+            e = [1.1, 2.2]
+
+        return Args
+
+    def test_default(self):
+        args = parse_args(self.args_cls, '')
         assert args.a is None
         assert args.b is None
         assert args.c is None
         assert args.d == []
         assert args.e == [1.1, 2.2]
 
-    def test_complex(self, list_args):
-        args = list_args('-a 1 a "a b" -b b -c 1 -d true 0 -e 1.0 2.2')
+    def test_complex(self):
+        args = parse_args(self.args_cls, '-a 1 a "a b" -b b -c 1 -d true 0 -e 1.0 2.2')
         assert args.a == ['1', 'a', 'a b']
         assert args.b == ['b']
         assert args.c == [1]
         assert args.d == [True, False]
         assert args.e == [1.0, 2.2]
 
-    def test_nargs(self, list_args):
-        args = list_args('-a -b -c -d -e 1.0')
+    def test_nargs(self):
+        args = parse_args(self.args_cls, '-a -b -c -d -e 1.0')
         assert args.a == []
         assert args.b == []
         assert args.c == []
         assert args.d == []
         assert args.e == [1.0]
 
-        args_cls, (a, b, c, d, e), sub_commands = _read_args(args.__class__)
+        args_cls, (a, b, c, d, e), sub_commands = _read_args(self.args_cls)
         # a, b, c, d, e = args_as_list(args)
         assert a.nargs == '*'
         assert b.nargs == '*'
@@ -257,10 +273,10 @@ class TestList:
 
         # -e has default value with >0 elements and that's why nargs is + instead of *
         with pytest.raises(SystemExit):
-            list_args('-a 1 -e')
+            parse_args(self.args_cls, '-a 1 -e')
 
-    def test_types(self, list_args):
-        args_cls, (a, b, c, d, e), sub_commands = _read_args(list_args().__class__)
+    def test_types(self):
+        args_cls, (a, b, c, d, e), sub_commands = _read_args(self.args_cls)
         assert a.type is list  # because of annotation
         assert a.constructor is str
         assert b.type == List  # ^ same
@@ -570,3 +586,135 @@ def test_sub_cmd_with_same_arguments():
     assert args.sub.b == 8
     assert args.sub.sub.a == 9
     assert args.sub.sub.b == 10
+
+
+class TestPredefinedParser:
+    def test_namespace_injection(self):
+        parser = ArgumentParser(prog='prog')
+        parser.add_argument('--foo', default=42, type=int)
+
+        class Args:
+            __namespace__: Namespace  # just for hint in IDE
+            a = 1
+            b = True
+
+        args = parse_args(Args, '--foo 100 -a 5 --no-b', parser=parser)
+        assert args.a == 5
+        assert args.b is False
+        assert args.__namespace__.foo == 100
+
+    def test_parser_params_are_untouched(self):
+        parser = ArgumentParser(prog='prog')
+        parser.add_argument('--foo', default=42, type=int)
+
+        class Args:
+            a = 1
+
+        parse_args(Args, '', parser=parser, parser_prog='NOT PROG')
+        assert parser.prog == 'prog'
+
+    def test_make_parser(self):
+        parser = ArgumentParser(prog='prog')
+        parser.add_argument('--foo', default=42, type=int)
+
+        class Args:
+            __namespace__: Namespace
+            a = 1
+            b = True
+
+        parser, options = argser.make_parser(Args, parser=parser)
+        args = shlex.split('--foo 100 -a 5 --no-b')
+        ns = parser.parse_args(args)
+        assert isinstance(ns, Namespace)
+        assert ns.foo == 100
+
+        args = argser.populate_holder(parser, Args, options, args)
+        assert args.a == 5
+        assert args.b is False
+
+    def test_sub_command(self):
+        parser = ArgumentParser(prog='prog')
+        parser.add_argument('--foo', default=42, type=int)
+
+        class Args:
+            __namespace__: Namespace
+            a = 1
+
+            class Sub:
+                b = False
+
+            sub = sub_command(Sub, parser=parser)
+
+        args = parse_args(Args, '-a 5 sub --foo 100 --no-b')
+        assert args.a == 5
+        assert args.sub.b is False
+        assert args.__namespace__.foo == 100
+
+
+def test_ignored_fields():
+    class Args:
+        foo = 1
+        bar: int = 1
+        baz: int = Opt(default=1)
+        _foo = 1
+        _bar: int = 1
+        _baz: int = Opt(default=1)
+        __foo = 1
+        __bar: int = 1
+        __baz: int = Opt(default=1)
+
+    args = parse_args(Args, '')
+    d = args_to_dict(args)
+    assert 'foo' in d
+    assert 'bar' in d
+    assert 'baz' in d
+    assert '_foo' not in d
+    assert '_bar' not in d
+    assert '_baz' not in d
+    assert '__foo' not in d
+    assert '__bar' not in d
+    assert '__baz' not in d
+
+
+def test_updated_arguments_on_holder():
+    class Args:
+        a: int
+        b = 1.1
+        c = True, 'help c'
+        dd = [1], 'help dd'
+        ee_ee: int = Opt(default=1)
+        f = Arg()
+
+    args = parse_args(Args, '-a 1 -b 2 --no-c --dd 3 --ee 5 foo')
+    assert isinstance(Args.a, Opt)
+    assert Args.a.type is int
+    assert Args.a.default is None
+    assert args.a == 1
+
+    assert isinstance(Args.b, Opt)
+    assert Args.b.type is float
+    assert Args.b.default == pytest.approx(1.1)
+    assert args.b == pytest.approx(2.0)
+
+    assert isinstance(Args.c, Opt)
+    assert Args.c.type == bool
+    assert Args.c.default is True
+    assert Args.c.help == 'help c'
+    assert args.c is False
+
+    assert isinstance(Args.dd, Opt)
+    assert Args.dd.type == List[int]
+    assert Args.dd.constructor is int
+    assert Args.dd.default == [1]
+    assert Args.dd.help == 'help dd'
+    assert args.dd == [3]
+
+    assert isinstance(Args.ee_ee, Opt)
+    assert Args.ee_ee.type is int
+    assert Args.ee_ee.default == 1
+    assert args.ee_ee == 5
+
+    assert isinstance(Args.f, Arg)
+    assert Args.f.type is str
+    assert Args.f.default is None
+    assert args.f == 'foo'
