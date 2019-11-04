@@ -344,10 +344,26 @@ Display arguments
     ...     show='table',
     ... )
     arg    value     arg     value                       
-    -----  -------   ------  ----------------------------
-    a      42        sub__a  fooooooooo baaaaaaaaaaaaaaar
-    b      foo               baaaaaaaaaaaaaaar           
+    -----  -------   ------  -----------------------------
+    a      42        sub__a  'fooooooooo baaaaaaaaaaaaaaar
+    b      'foo'             baaaaaaaaaaaaaaar'
 
+
+Or as tree:
+
+.. doctest::
+
+    >>> args = parse_args(
+    ...     Args,
+    ...     '-a 42 sub -a "fooooooooo baaaaaaaaaaaaaaar baaaaaaaaaaaaaaaz"',
+    ...     show='tree',
+    ... )
+    Args
+    ├ a = 42
+    ├ b = 'foo'
+    └ sub = Sub
+      ├ a = 'fooooooooo baaaaaaaaaaaaaaar
+      └     baaaaaaaaaaaaaaaz'
 
 Or in one line:
 
@@ -367,9 +383,9 @@ Or after parsing:
     >>> from argser import print_args
     >>> print_args(args, 'table')
     arg    value     arg     value                       
-    -----  -------   ------  ----------------------------
-    a      42        sub__a  fooooooooo baaaaaaaaaaaaaaar
-    b      foo               baaaaaaaaaaaaaaar   
+    -----  -------   ------  -----------------------------
+    a      42        sub__a  'fooooooooo baaaaaaaaaaaaaaar
+    b      'foo'             baaaaaaaaaaaaaaar'
 
 
 Using existing parser

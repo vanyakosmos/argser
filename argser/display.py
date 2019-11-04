@@ -9,17 +9,15 @@ from argser.utils import colors, vlen, args_to_dict
 
 
 def stringify(args: Args, shorten=False):
-    def pair(x):
-        k, v = x
-        if v is None:
-            v = colors.red('-')
+    pairs = []
+    for key, value in args_to_dict(args).items():
+        if hasattr(value.__class__, SUB_COMMAND_MARK):
+            value = stringify(value, shorten)
         else:
-            if shorten:
-                v = textwrap.shorten(str(v), width=20, placeholder='...')
-            v = repr(v)
-        return f"{colors.green(k)}={v}"
+            value = _format_value(value, shorten, fill=False)
+        pairs.append(f"{colors.green(key)}={value}")
 
-    pairs = ', '.join(map(pair, args_to_dict(args).items()))
+    pairs = ', '.join(pairs)
     cls_name = colors.yellow(args.__class__.__name__)
     return f"{cls_name}({pairs})"
 
@@ -85,31 +83,42 @@ def _split_by_sub(data: list, cols=1):
     return res
 
 
-def _colorize(data, kwargs):
+def _colorize_table_headers(data, kwargs):
     h_arg, h_value = kwargs['headers']
     kwargs['headers'] = colors.yellow(h_arg), colors.yellow(h_value)
     for i, (key, value) in enumerate(data):
-        if value is None:
-            value = colors.red('-')
-        else:
-            value = str(value)
         data[i] = colors.green(key), value
 
 
-def make_table(args: Args, preset=None, cols='sub-auto', gap='   ', shorten=False, **kwargs):
+def _get_shorten(shorten):
+    if shorten is True:
+        return 40
+    if shorten is False:
+        return 400
+    return shorten
+
+
+def _format_value(value, shorten=False, fill=40):
+    if value is None:
+        return colors.red('-')
+    text = repr(value)
+    shorten = _get_shorten(shorten)
+    if shorten:
+        text = textwrap.shorten(text, width=shorten, placeholder='...')
+    if fill:
+        text = textwrap.fill(text, width=fill)
+    return text
+
+
+def make_table(args: Args, preset=None, cols='sub-auto', gap='   ', shorten=False, fill=40, **kwargs):
     from tabulate import tabulate
     kwargs.setdefault('headers', ['arg', 'value'])
     data = _get_table(args)
 
-    _colorize(data, kwargs)
-    # at this point all keys and values in data are strings
+    _colorize_table_headers(data, kwargs)
 
     for i, (key, value) in enumerate(data):
-        if shorten:
-            value = textwrap.shorten(value, width=40, placeholder='...')
-        else:
-            value = textwrap.shorten(value, width=400, placeholder='...')
-            value = textwrap.fill(value, width=40)
+        value = _format_value(value, shorten, fill)
         data[i] = key, value
 
     if preset == 'fancy':
@@ -128,7 +137,36 @@ def make_table(args: Args, preset=None, cols='sub-auto', gap='   ', shorten=Fals
     return _merge_str_cols(parts, gap)
 
 
-def print_args(args: Args, variant=None, print_fn=None, shorten=False, **kwargs):
+def make_tree(args: Args, shorten=False, fill=40, indent=''):
+    shorten = _get_shorten(shorten)
+
+    parts = [colors.yellow(args.__class__.__name__)]
+    data = args_to_dict(args)
+    for i, (field, value) in enumerate(data.items()):
+        field = colors.green(field)
+        p = '└' if i == len(data) - 1 else '├'
+
+        if hasattr(value.__class__, SUB_COMMAND_MARK):
+            value = make_tree(value, shorten=shorten, fill=fill, indent=indent + '  ')
+            parts.append(f"{indent}{p} {field} = {value}")
+            continue
+
+        lines = _format_value(value, shorten, fill).splitlines()
+        if len(lines) > 1:
+            p = '├'
+        parts.append(f"{indent}{p} {field} = {lines[0]}")
+        gap = ' ' * vlen(field)
+        for j, line in enumerate(lines[1:]):
+            if j == len(lines) - 2 and i == len(data) - 1:
+                p = '└'
+            else:
+                p = '│'
+            parts.append(f"{indent}{p} {gap}   {line}")
+
+    return '\n'.join(parts)
+
+
+def print_args(args: Args, variant=None, print_fn=None, shorten=False, fill=40, **kwargs):
     """
     Pretty print out data from :attr:`args`.
 
@@ -138,14 +176,17 @@ def print_args(args: Args, variant=None, print_fn=None, shorten=False, **kwargs)
         otherwise print arguments in one line
     :param print_fn:
     :param shorten: shorten long text (eg long default value)
+    :param fill: max width of text, wraps long paragraph
     :param kwargs: additional kwargs for tabulate + some custom fields:
         cols: number of columns. Can be 'auto' - len(args)/N, int - just number of columns,
         'sub' / 'sub-auto' / 'sub-INT' - split by sub-commands,
         gap: string, space between tables/columns
     """
     if variant == 'table':
-        s = make_table(args, shorten=shorten, **kwargs)
+        s = make_table(args, shorten=shorten, fill=fill, **kwargs)
+    elif variant == 'tree':
+        s = make_tree(args, shorten=shorten, fill=fill)
     else:
-        s = stringify(args, shorten)
+        s = stringify(args, shorten=shorten)
     print_fn = print_fn or print
     print_fn(s)

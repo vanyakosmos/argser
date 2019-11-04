@@ -339,6 +339,7 @@ def parse_args(
     show=None,
     print_fn=None,
     shorten=False,
+    fill=40,
     tabulate_kwargs=None,
     **kwargs,
 ) -> Args:
@@ -353,6 +354,7 @@ def parse_args(
         if falsy value - don't print anything
     :param print_fn:
     :param shorten: shorten long text (eg long default value)
+    :param fill: max width of text, wraps long paragraph
     :param tabulate_kwargs: tabulate additional kwargs + some custom fields:
         cols: number of columns. Can be 'auto' - len(args)/N, int - just number of columns,
         'sub' / 'sub-auto' / 'sub-INT' - split by sub-commands,
@@ -373,5 +375,5 @@ def parse_args(
     tabulate_kwargs = tabulate_kwargs or {}
     _add_prefixed_key(kwargs, tabulate_kwargs, 'tabulate_')
     if show:
-        print_args(result, variant=show, print_fn=print_fn, shorten=shorten, **tabulate_kwargs)
+        print_args(result, variant=show, print_fn=print_fn, shorten=shorten, fill=fill, **tabulate_kwargs)
     return result
