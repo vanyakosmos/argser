@@ -1,0 +1,2 @@
+class ArgserException(Exception):
+    pass

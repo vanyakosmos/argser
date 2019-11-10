@@ -162,8 +162,8 @@ argparse params
     >>> assert args.c == [1, 2]
 
 
-constructors
-------------
+factories
+---------
 
 .. doctest::
 
@@ -176,7 +176,7 @@ constructors
     ...     return b + '42'
 
     >>> class Args:
-    ...     a: int = Opt(constructor=make_a)
+    ...     a: int = Opt(factory=make_a)
     ...     b = 'default', make_b, "help message for be"
 
     >>> args = parse_args(Args, '-a 2 -b "foo"')

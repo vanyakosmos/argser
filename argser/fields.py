@@ -5,6 +5,7 @@ from argparse import ArgumentParser, SUPPRESS
 from functools import partial
 from typing import Tuple, Optional, List
 
+from argser.exceptions import ArgserException
 from argser.logging import VERBOSE
 from argser.utils import str2bool, is_list_like_type
 
@@ -28,7 +29,7 @@ class Opt:
         # argcomplete
         completer=None,
         # extra
-        constructor=None,
+        factory=None,
         bool_flag=True,
         prefix='--',
         repl=('_', '-'),
@@ -47,7 +48,7 @@ class Opt:
             METAVAR
         :param action: argparse action: count, append, store_const, version
         :param completer: argcomplete completion function
-        :param constructor: callable that accepts a string and returns desirable value,
+        :param factory: callable that accepts a string and returns desirable value,
             default is :attr:`type`
         :param bool_flag: if True then read bool from argument flag: `--arg` is True,
             `--no-arg` is False, otherwise check if arg value and truthy or falsy:
@@ -76,7 +77,7 @@ class Opt:
         # argcomplete
         self.completer = completer
         # extra
-        self.constructor = self._pick_constructor(constructor)
+        self.factory = self._pick_factory(factory)
         self.bool_flag = bool_flag
         self.extra = kwargs
 
@@ -210,17 +211,17 @@ class Opt:
             return List[typ]
         return typ
 
-    def _pick_constructor(self, *values):
-        if len(values) == 1 and values[0] is None:
-            return
+    def _pick_factory(self, *values):
+        if len(values) == 1 and (values[0] is None or isinstance(values[0], str)):
+            return values[0]
         for val in values:
             if callable(val):
                 return val
         else:
-            raise ValueError(f"invalid constructors: {values}")
+            raise ArgserException(f"Invalid factories: {values}.")
 
     def guess_type_and_nargs(self, annotation=None):
-        """Based on annotation and default value guess type, nargs and constructor."""
+        """Based on annotation and default value guess type, nargs and factory."""
         typ, nargs = self._guess_type_and_nargs(annotation, self.default, self.type)
         if self.action == 'append':
             nargs = None
@@ -229,14 +230,14 @@ class Opt:
         self.type = (
             self.type or annotation or self._restore_type(typ, self.nargs, self.default)
         )
-        self.constructor = self._pick_constructor(self.constructor, typ)
+        self.factory = self._pick_factory(self.factory, typ)
         return typ, nargs
 
     def _params(self, exclude=(), **kwargs):
         params = dict(
             dest=self.dest,
             default=self.default,
-            type=self.constructor,
+            type=self.factory,
             nargs=self.nargs,
             help=self.help,
             metavar=self.metavar,
@@ -290,7 +291,7 @@ class Opt:
 
     def inject(self, parser: ArgumentParser):
         logger.log(VERBOSE, f"adding {self.dest} to the parser")
-        if self.constructor is bool:
+        if self.factory is bool:
             action = self.inject_bool(parser)
         else:
             action = self._inject(parser)

@@ -2,10 +2,13 @@ import logging
 import re
 import shlex
 from argparse import ArgumentParser, Namespace
-from typing import Any, List, Type
+from functools import partial
+from types import FunctionType
+from typing import Any, List, Type, Tuple, Dict
 
 from argser.consts import Args, SUB_COMMAND_MARK
 from argser.display import print_args, stringify
+from argser.exceptions import ArgserException
 from argser.fields import Opt
 from argser.logging import VERBOSE
 from argser.formatters import ColoredHelpFormatter, HelpFormatter
@@ -30,6 +33,7 @@ def _get_fields(cls: Type[Args]):
         for key, value in cls.__dict__.items()
         if not key.startswith('_')
         and not isinstance(value, type)  # skip built-ins and inner classes
+        and not callable(value)
     }
     fields = {
         k: None for k in ann if k not in fields_with_value and not k.startswith('_')
@@ -46,6 +50,29 @@ def _get_fields(cls: Type[Args]):
     return fields
 
 
+def _extract_methods(args_cls: Type[Args]):
+    return {
+        key: value
+        for key, value in args_cls.__dict__.items()
+        if callable(value) and not key.startswith('__')
+    }
+
+
+def _set_factory_from_class_method(
+    option: Opt, methods: Dict[str, FunctionType], key: str
+):
+    if isinstance(option.factory, str):
+        if option.factory not in methods:
+            raise ArgserException(f"Couldn't find method {option.factory}.")
+        method = methods[option.factory]
+    elif option.factory is None:
+        method = methods.get(f'read_{key}', None)
+    else:
+        method = None
+    if method:
+        option.factory = partial(method, None)
+
+
 def _read_args(
     args_cls: Type[Args],
     parser_name='root',
@@ -53,11 +80,12 @@ def _read_args(
     bool_flag=True,
     prefix='--',
     repl=('_', '-'),
-):
+) -> Tuple[Type[Args], List[Opt], Dict[str, tuple]]:
     args = []
     sub_commands = {}
     ann = _collect_annotations(args_cls)
     fields = _get_fields(args_cls)
+    methods = _extract_methods(args_cls)
     for key, value in fields.items():  # type: str, Any
         logger.log(VERBOSE, f"reading {key!r}")
         annotation = ann.get(key)
@@ -70,40 +98,47 @@ def _read_args(
             continue
         if isinstance(value, Opt):
             option = value
-            option.guess_type_and_nargs(annotation)
             if not option.dest:
                 option.set_dest(dest)
         else:
-            default, constructor, help = value, None, None
+            default, factory, help = value, None, None
             if isinstance(value, tuple):
                 if len(value) == 2:
                     default, help = value
                 elif len(value) == 3:
-                    default, constructor, help = value
+                    default, factory, help = value
                 else:
-                    raise ValueError(
+                    raise ArgserException(
                         f"invalid value for {key}. "
                         f"Tuple structure should be: (default, help) or "
-                        f"(default, constructor, help)"
+                        f"(default, factory, help)"
                     )
             option = Opt(
                 dest=dest,
                 default=default,
                 help=help,
-                constructor=constructor,
+                factory=factory,
                 bool_flag=bool_flag,
                 prefix=prefix,
                 repl=repl,
             )
-            option.guess_type_and_nargs(annotation)
 
+        # read factory method
+        _set_factory_from_class_method(option, methods, key)
+
+        # override params based on global params
         if override:
             option.bool_flag = bool_flag
             option.prefix = prefix
             option.repl = repl
-        logger.log(VERBOSE, option.__dict__)
-        args.append(option)
+
+        # setup type (and factory if it is still None)
+        option.guess_type_and_nargs(annotation)
+
+        # update class attribute with populated Opt instance
         setattr(args_cls, key, option)
+        args.append(option)
+        logger.log(VERBOSE, option.__dict__)
     return args_cls, args, sub_commands
 
 

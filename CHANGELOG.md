@@ -7,7 +7,8 @@ Versions follow [Semantic Versioning](https://semver.org) (`<major>.<minor>.<pat
 
 ## Unpublished
 
-- read factory functions from Args class 
+- rename Opt param ``constructor`` to ``factory``
+- read factory functions from Args class
 
 
 ## 0.0.12
