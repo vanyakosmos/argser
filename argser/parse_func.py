@@ -9,7 +9,11 @@ from argser.utils import args_to_dict
 
 def _get_default_args(func):
     signature = inspect.signature(func)
-    return {k: v.default for k, v in signature.parameters.items() if v.default is not inspect.Parameter.empty}
+    return {
+        k: v.default
+        for k, v in signature.parameters.items()
+        if v.default is not inspect.Parameter.empty
+    }
 
 
 def _make_argument(name, annotations: dict, defaults: dict):
@@ -24,7 +28,8 @@ def _make_argument(name, annotations: dict, defaults: dict):
 def _make_args_cls(func: FunctionType):
     ann = func.__annotations__
     args = func.__code__.co_varnames
-    args = args[:func.__code__.co_argcount]  # arguments excluding *args, **kwargs and kw only args
+    # arguments excluding *args, **kwargs and kw only args
+    args = args[: func.__code__.co_argcount]
     defaults = _get_default_args(func)
     Args = type('Args', (), {arg: _make_argument(arg, ann, defaults) for arg in args})
     return Args
@@ -43,7 +48,8 @@ def call(func=None, *args, **kwargs):
     Call provided function with arguments from command line.
     Parser will be generated based on function arguments.
 
-    :attr:`*args`, :attr:`**kwargs` and keywords only arguments are currently not supported.
+    :attr:`*args`, :attr:`**kwargs` and keywords only arguments are currently
+        not supported.
 
     :param func: function to call with parsed arguments.
     :param args: positional arguments for :func:`parse_args`
@@ -57,7 +63,8 @@ def call(func=None, *args, **kwargs):
     >>> call(foo, '1 2 -c 3.4 --no-d')
     ['1', 2, 3.4, False]
 
-    Can be used as decorator. Function will be called immediately with arguments provided in string or command line.
+    Can be used as decorator. Function will be called immediately with arguments
+    provided in string or command line.
 
     >>> @call('1 2')
     ... def foo(a, b: int):
@@ -92,6 +99,7 @@ class SubCommands:
     >>> subs.parse('bar 1 2')
     ['1', 2]
     """
+
     def __init__(self):
         self.commands = {}
         self.functions = {}
@@ -111,7 +119,9 @@ class SubCommands:
         return dec
 
     def parse(self, *parser_args, **parser_kwargs):
-        Args = type('Args', (), {name: sub_cmd for name, sub_cmd in self.commands.items()})
+        Args = type(
+            'Args', (), {name: sub_cmd for name, sub_cmd in self.commands.items()}
+        )
         args = parse_args(Args, *parser_args, **parser_kwargs)
         for name in self.commands:
             sub_args = getattr(args, name, None)

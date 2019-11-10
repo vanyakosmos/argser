@@ -2,15 +2,15 @@
 
 [![PyPI version](https://badge.fury.io/py/argser.svg)](http://badge.fury.io/py/argser)
 [![Downloads](https://pepy.tech/badge/argser)](https://pepy.tech/project/argser)
-[![Build Status](https://github.com/vanyakosmos/argser/workflows/test-publish/badge.svg)](https://github.com/vanyakosmos/argser/actions?workflow=test-publish)
+[![Build Status](https://github.com/vanyakosmos/argser/workflows/tests/badge.svg)](https://github.com/vanyakosmos/argser/actions?workflow=tests)
 [![Coverage](https://codecov.io/gh/vanyakosmos/argser/branch/master/graph/badge.svg)](https://codecov.io/gh/vanyakosmos/argser)
 [![Docs](https://readthedocs.org/projects/argser/badge/?version=stable)](https://argser.readthedocs.io/en/stable/)
 
-[GitHub](https://github.com/vanyakosmos/argser) | 
-[PyPI](https://pypi.org/project/argser/) | 
-[Docs](https://argser.readthedocs.io/en/stable) | 
-[Examples](https://argser.readthedocs.io/en/stable/examples.html) | 
-[Installation](https://argser.readthedocs.io/en/stable/installation.html) | 
+[GitHub](https://github.com/vanyakosmos/argser) |
+[PyPI](https://pypi.org/project/argser/) |
+[Docs](https://argser.readthedocs.io/en/stable) |
+[Examples](https://argser.readthedocs.io/en/stable/examples.html) |
+[Installation](https://argser.readthedocs.io/en/stable/installation.html) |
 [Changelog](CHANGELOG.md)
 
 Arguments parsing without boilerplate.
@@ -58,7 +58,7 @@ args = parse_args(Args, show=True)
 
 <details>
 <summary>argparse alternative</summary>
-    
+
 ```python
 from argparse import ArgumentParser
 
@@ -115,7 +115,7 @@ class Args:
     a: bool
     b = []
     c = 5
-    
+
     class SubArgs:
         d = 1
         e = '2'

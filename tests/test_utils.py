@@ -2,7 +2,6 @@ import textwrap
 from typing import List
 
 from argser import Opt, sub_command, Arg
-# noinspection PyProtectedMember
 from argser.parser import _read_args, _make_parser
 from argser.utils import is_list_like_type
 
@@ -17,6 +16,7 @@ def test_is_list_typing():
 
 def test_cli():
     from argser.__main__ import autocomplete, AutoArgs
+
     args = AutoArgs()
     args.executables = ['foo.py']
     args.complete_arguments = None
@@ -47,12 +47,12 @@ class TestHelpFormatting:
             Args,
             """
             usage: prog [-h] a {sub} ...
-            
+
             positional arguments:
                 a           str. a help
                 {sub}
                     sub     sub help
-            
+
             optional arguments:
                 -h, --help  show this help message and exit
             """,
@@ -71,7 +71,7 @@ class TestHelpFormatting:
                 Args,
                 """
                 usage: prog [-h] [--l0 [L [L ...]]] [--l1 L [L ...]] [--l2 [L [L ...]]] [--ap A]
-    
+
                 optional arguments:
                     -h, --help        show this help message and exit
                     --l0 [L [L ...]]  List[str], default: []
@@ -137,7 +137,7 @@ class TestHelpFormatting:
             positional arguments:
                 {sub}
                     sub     sub1 help
-            
+
             optional arguments:
                 -h, --help  show this help message and exit
                 -a A        float, default: 1.1

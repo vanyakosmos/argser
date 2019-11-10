@@ -7,7 +7,7 @@ Sub-commands
 .. doctest::
 
     >>> from argser import parse_args, sub_command
-    
+
     >>> class Args:
     ...     a: bool
     ...     b = []
@@ -23,18 +23,18 @@ Sub-commands
     ...         f = 1
     ...         g = '2'
     ...     sub2 = sub_command(Sub2)
-    
+
     >>> args = parse_args(Args, '-a -c 10')
     >>> assert args.a is True
     >>> assert args.c == 10
     >>> assert args.sub1 is None
     >>> assert args.sub2 is None
-    
+
     >>> args = parse_args(Args, '-a -c 10 sub1 -d 5 sub11 -a 6')
     >>> assert args.sub1.d == 5
     >>> assert args.sub1.sub11.a == 6
     >>> assert args.sub2 is None
-    
+
     >>> args = parse_args(Args, '-a -c 10 sub2 -g "foo bar"')
     >>> assert args.sub1 is None
     >>> assert args.sub2.g == "foo bar"
@@ -49,12 +49,12 @@ str / int / float
 .. doctest::
 
     >>> from argser import Opt
-    
+
     >>> class Args:
     ...     a: str  # default is None
     ...     b = 2  # default is 2
     ...     c: float = Opt(default=3.0, help="a3")  # default is 3.0, with additional help text
-    
+
     >>> args = parse_args(Args, '-a "foo bar" -b 5 -c 4.2')
     >>> assert args.a == 'foo bar'
     >>> assert args.b == 5
@@ -71,13 +71,13 @@ booleans
     ...     b = True  # default is True, to change to False: ./script.py --no-b
     ...     c = False  # default is False, to change to True: ./script.py -c
     ...     d: bool = Opt(bool_flag=False)  # to change - specify value after flag: `-d 1` or `-d false` or ...
-    
+
     >>> args = parse_args(Args, '-d 0')
     >>> assert args.a is None
     >>> assert args.b is True
     >>> assert args.c is False
     >>> assert args.d is False
-    
+
     >>> args = parse_args(Args, '-a --no-b -c -d 1')
     >>> assert args.a is True
     >>> assert args.b is False
@@ -97,7 +97,7 @@ lists
     ...     b: List[int] = []  # default = [], type = int, nargs = *
     ...     c = [1.0]  # default = [], type = float, nargs = +
     ...     d: List[int] = Opt(default=[], nargs='+')  # default = [], type = int, nargs = +
-    
+
     >>> args = parse_args(Args, '-a "foo bar" "baz"')
     >>> assert args.a == ["foo bar", "baz"]
     >>> args = parse_args(Args, '-b 1 2 3')
@@ -121,7 +121,7 @@ positional arguments
     >>> class Args:
     ...     a: float = Arg()
     ...     b: str = Arg()
-    
+
     >>> args = parse_args(Args, '5 "foo bar"')
     >>> assert args.a == 5
     >>> assert args.b == 'foo bar'
@@ -137,7 +137,7 @@ different prefixes
     >>> class Args:
     ...     aaa: int = Opt(prefix='-')
     ...     bbb: int = Opt(prefix='++')
-    
+
     >>> args = parse_args(Args, '-aaa 42 ++bbb 42')
     >>> assert args.aaa == 42
     >>> assert args.bbb == 42
@@ -155,7 +155,7 @@ argparse params
     ...     a = Opt(help="foo bar")  # with additional help message
     ...     b = Opt(action='count')
     ...     c: List[int] = Opt(action='append')
-    
+
     >>> args = parse_args(Args, '-a foo -bbb -c 1 -c 2')
     >>> assert args.a == 'foo'
     >>> assert args.b == 3
@@ -193,7 +193,7 @@ Actions
 
     >>> class Args:
     ...     a = Opt(action='store_const', default='42', const=42)
-    
+
     >>> args = parse_args(Args, '')
     >>> assert args.a == '42'
     >>> args = parse_args(Args, '-a')
@@ -206,10 +206,10 @@ Actions
 
     >>> class Args:
     ...     a: List[int] = Opt(action='append', default=[])
-    
+
     >>> args = parse_args(Args, '-a 1')
     >>> assert args.a == [1]
-    
+
     >>> args = parse_args(Args, '-a 1 -a 2')
     >>> assert args.a == [1, 2]
 
@@ -218,10 +218,10 @@ Actions
     >>> from argser import Opt
     >>> class Args:
     ...     verbose: int = Opt(action='count', default=0)
-    
+
     >>> args = parse_args(Args, '')
     >>> assert args.verbose == 0
-    
+
     >>> args = parse_args(Args, '-vvv')
     >>> assert args.verbose == 3
 
@@ -235,14 +235,14 @@ Reusability
     ...     value: int
     ...     verbose = Opt(action='count', default=0)
     ...     model_path = 'foo.pkl'
-    
+
     >>> class Args1(CommonArgs):
     ...     value: str  # redefine
     ...     epoch = 10
-    
+
     >>> class Args2(CommonArgs):
     ...     type = 'bert'
-    
+
     >>> args = parse_args(Args1, '--value "foo bar" --epoch 5')
     >>> assert args.epoch == 5
     >>> args = parse_args(Args2, '--value 10 --type albert')
@@ -255,10 +255,10 @@ Call function with parsed arguments
 .. doctest::
 
     >>> import argser
-    
+
     >>> def main(a, b: int, c=1.2, d: List[bool]=None):
     ...     return [a, b, c, d]
-    
+
     >>> assert argser.call(main, '1 2 -c 3.3 -d 1 0 1 1') == [
     ...     '1',
     ...     2,
@@ -330,8 +330,8 @@ Display arguments
 *****************
 
 .. doctest::
-    
-    >>> from argser import sub_command, parse_args  
+
+    >>> from argser import sub_command, parse_args
     >>> class Args:
     ...     a = 1
     ...     b = 'foo'
@@ -343,7 +343,7 @@ Display arguments
     ...     '-a 42 sub -a "fooooooooo baaaaaaaaaaaaaaar baaaaaaaaaaaaaaar"',
     ...     show='table',
     ... )
-    arg    value     arg     value                       
+    arg    value     arg     value
     -----  -------   ------  -----------------------------
     a      42        sub__a  'fooooooooo baaaaaaaaaaaaaaar
     b      'foo'             baaaaaaaaaaaaaaar'
@@ -368,21 +368,21 @@ Or as tree:
 Or in one line:
 
 .. doctest::
-    
-    >>> args = parse_args(  
+
+    >>> args = parse_args(
     ...     Args,
     ...     '-a 42 sub -a "fooooooooo baaaaaaaaaaaaaaar baaaaaaaaaaaaaaar"',
     ...     show=True,
     ... )
     Args(a=42, b='foo', sub=Sub(a='fooooooooo baaaaaaaaaaaaaaar baaaaaaaaaaaaaaar'))
-    
+
 Or after parsing:
 
 .. doctest::
 
     >>> from argser import print_args
     >>> print_args(args, 'table')
-    arg    value     arg     value                       
+    arg    value     arg     value
     -----  -------   ------  -----------------------------
     a      42        sub__a  'fooooooooo baaaaaaaaaaaaaaar
     b      'foo'             baaaaaaaaaaaaaaar'

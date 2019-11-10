@@ -49,7 +49,8 @@ class colors:
     green = partial(colored, color='green')
     yellow = partial(colored, color='yellow')
     blue = partial(colored, color='blue')
-    no = partial(lambda x: x)  # partial will prevent 'self' injection when called from ColoredHelpFormatter
+    # partial will prevent 'self' injection when called from ColoredHelpFormatter
+    no = partial(lambda x: x)
 
 
 def args_to_dict(args: Args) -> dict:

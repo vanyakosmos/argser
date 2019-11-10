@@ -110,8 +110,17 @@ def _format_value(value, shorten=False, fill=40):
     return text
 
 
-def make_table(args: Args, preset=None, cols='sub-auto', gap='   ', shorten=False, fill=40, **kwargs):
+def make_table(
+    args: Args,
+    preset=None,
+    cols='sub-auto',
+    gap='   ',
+    shorten=False,
+    fill=40,
+    **kwargs,
+):
     from tabulate import tabulate
+
     kwargs.setdefault('headers', ['arg', 'value'])
     data = _get_table(args)
 
@@ -166,7 +175,9 @@ def make_tree(args: Args, shorten=False, fill=40, indent=''):
     return '\n'.join(parts)
 
 
-def print_args(args: Args, variant=None, print_fn=None, shorten=False, fill=40, **kwargs):
+def print_args(
+    args: Args, variant=None, print_fn=None, shorten=False, fill=40, **kwargs
+):
     """
     Pretty print out data from :attr:`args`.
 
@@ -178,8 +189,8 @@ def print_args(args: Args, variant=None, print_fn=None, shorten=False, fill=40, 
     :param shorten: shorten long text (eg long default value)
     :param fill: max width of text, wraps long paragraph
     :param kwargs: additional kwargs for tabulate + some custom fields:
-        cols: number of columns. Can be 'auto' - len(args)/N, int - just number of columns,
-        'sub' / 'sub-auto' / 'sub-INT' - split by sub-commands,
+        cols: number of columns. Can be 'auto' - len(args)/N, int - just number of
+        columns, 'sub' / 'sub-auto' / 'sub-INT' - split by sub-commands,
         gap: string, space between tables/columns
     """
     if variant == 'table':

@@ -6,8 +6,10 @@ import pytest
 
 import argser
 from argser import Arg, Opt, parse_args, sub_command
-# noinspection PyProtectedMember
-from argser.parser import _make_shortcuts_sub_wise, _read_args
+from argser.parser import (
+    _make_shortcuts_sub_wise as make_shortcuts,
+    _read_args as read_args,
+)
 from argser.utils import args_to_dict
 
 
@@ -263,7 +265,7 @@ class TestList:
         assert args.d == []
         assert args.e == [1.0]
 
-        args_cls, (a, b, c, d, e), sub_commands = _read_args(self.args_cls)
+        args_cls, (a, b, c, d, e), sub_commands = read_args(self.args_cls)
         # a, b, c, d, e = args_as_list(args)
         assert a.nargs == '*'
         assert b.nargs == '*'
@@ -276,7 +278,7 @@ class TestList:
             parse_args(self.args_cls, '-a 1 -e')
 
     def test_types(self):
-        args_cls, (a, b, c, d, e), sub_commands = _read_args(self.args_cls)
+        args_cls, (a, b, c, d, e), sub_commands = read_args(self.args_cls)
         assert a.type is list  # because of annotation
         assert a.constructor is str
         assert b.type == List  # ^ same
@@ -443,18 +445,22 @@ def test_make_shortcuts():
     def comp_names(opt: Opt, *names):
         return set(opt.option_names) == set(names)
 
-    _make_shortcuts_sub_wise([a, aa, bc, ab_cd, ab_cde, bcd, f1, f2_3], {'sub': (None, [aaa, ab_cd2], {})})
+    make_shortcuts(
+        [a, aa, bc, ab_cd, ab_cde, bcd, f1, f2_3], {'sub': (None, [aaa, ab_cd2], {})}
+    )
     assert a.dest == 'a' and comp_names(a, 'a')  # already short name
     assert aa.dest == 'aa' and comp_names(aa, 'aa')  # name 'a' already exists
     assert bc.dest == 'bc' and comp_names(bc, 'b', 'bc')
     assert ab_cd.dest == 'ab_cd' and comp_names(ab_cd, 'ac', 'ab_cd')
     assert ab_cde.dest == 'ab_cde' and comp_names(ab_cde, 'ab_cde')  # ac is taken
-    assert bcd.dest == 'bcd' and comp_names(bcd, 'foo', 'bcd')  # alias was already defined and override is false
+    # alias was already defined and override is false
+    assert bcd.dest == 'bcd' and comp_names(bcd, 'foo', 'bcd')
     assert comp_names(f1, 'f1', 'f3')
     assert comp_names(f2_3, 'f2_3')
-    # sub
+
     assert aaa.dest == 'aaa' and comp_names(aaa, 'a', 'aaa')
-    assert ab_cd2.dest == 'ab_cd' and comp_names(ab_cd2, 'ac', 'ab_cd')  # dest was changed
+    # dest was changed
+    assert ab_cd2.dest == 'ab_cd' and comp_names(ab_cd2, 'ac', 'ab_cd')
 
 
 def test_reusability():
@@ -505,7 +511,9 @@ def test_prefix():
 
 def test_constructor():
     class Args:
-        a: List[int] = Opt(constructor=lambda x: [int(e) + 1 for e in list(x)], nargs='?', default=[-1])
+        a: List[int] = Opt(
+            constructor=lambda x: [int(e) + 1 for e in list(x)], nargs='?', default=[-1]
+        )
         b: int = Opt(constructor=lambda x: int(x) + 2)
 
     args = parse_args(Args, '')
@@ -524,17 +532,17 @@ def test_quick_help():
         # with annotation parenthesis are required
         b: str = (None, "help for b")
         # default, constructor, help
-        c: float = (5., lambda x: float(x) * 2, "help for b")
+        c: float = (5.0, lambda x: float(x) * 2, "help for b")
 
     args = parse_args(Args, '')
     assert args.a == 1
     assert args.b is None
-    assert args.c == pytest.approx(5.)
+    assert args.c == pytest.approx(5.0)
 
     args = parse_args(Args, '-a 2 -b "foo bar" -c 10')
     assert args.a == 2
     assert args.b == 'foo bar'
-    assert args.c == pytest.approx(20.)
+    assert args.c == pytest.approx(20.0)
 
     class Args:
         e = ('foo', str, "help", "some trash no one asked for")

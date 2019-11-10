@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 
 class Opt:
     """Optional Argument (eg: --arg, -a)"""
+
     def __init__(
         self,
         *options: str,
@@ -34,24 +35,33 @@ class Opt:
         **kwargs,
     ):
         """
-        :param options: list of strings to be used as arguments name. Can be modified by :attr:`prefix` and :attr:`repl`
+        :param options: list of strings to be used as arguments name. Can be modified
+            by :attr:`prefix` and :attr:`repl`
         :param dest: destination in the namespace, can be prefixed with sub-parser name
         :param default: default value
-        :param type: type of value that will be displayed in help message and used for type hints.
+        :param type: type of value that will be displayed in help message and used for
+            type hints.
         :param nargs: number of values
         :param help: help text to display in help message alongside arguments
-        :param metavar: thingy that will be displayed near options with values: --args METAVAR
+        :param metavar: thingy that will be displayed near options with values: --args
+            METAVAR
         :param action: argparse action: count, append, store_const, version
         :param completer: argcomplete completion function
-        :param constructor: callable that accepts a string and returns desirable value, default is :attr:`type`
-        :param bool_flag: if True then read bool from argument flag: `--arg` is True, `--no-arg` is False,
-               otherwise check if arg value and truthy or falsy: `--arg 1` is True `--arg no` is False
+        :param constructor: callable that accepts a string and returns desirable value,
+            default is :attr:`type`
+        :param bool_flag: if True then read bool from argument flag: `--arg` is True,
+            `--no-arg` is False, otherwise check if arg value and truthy or falsy:
+            `--arg 1` is True `--arg no` is False
         :param prefix: automatically prefix options with prefix.
-               If option is single letter then prefix will also be shortened. See :meth:`set_options`
-        :param repl: update provided options: replace first value in tuple with second value
+            If option is single letter then prefix will also be shortened.
+            See :meth:`set_options`
+        :param repl: update provided options: replace first value in tuple with second
+            value
         :param kwargs: extra arguments for `parser.add_argument`
         """
-        assert len(set(prefix)) < 2, "prefix should consist from the same characters, eg: --, ++, ..."
+        assert (
+            len(set(prefix)) < 2
+        ), "prefix should consist from the same characters, eg: --, ++, ..."
 
         self.prefix = prefix
         self.repl = repl
@@ -144,7 +154,9 @@ class Opt:
 
     def make_options(self, *options: str, prefix=None, repl=None):
         """
-        >>> Opt().make_options('aaa', 'a', 'foo_bar', '+already_has', prefix='--', repl=('_', '+'))
+        >>> Opt().make_options(
+        ...     'aaa', 'a', 'foo_bar', '+already_has', prefix='--', repl=('_', '+')
+        ... )
         ['--aaa', '-a', '--foo+bar', '+already+has']
         """
         prefix = prefix or self.prefix
@@ -214,7 +226,9 @@ class Opt:
             nargs = None
         self.nargs = self.nargs or nargs
         # user specified type -> annotation -> guessed type
-        self.type = self.type or annotation or self._restore_type(typ, self.nargs, self.default)
+        self.type = (
+            self.type or annotation or self._restore_type(typ, self.nargs, self.default)
+        )
         self.constructor = self._pick_constructor(self.constructor, typ)
         return typ, nargs
 
@@ -251,11 +265,23 @@ class Opt:
     def _inject(self, parser: ArgumentParser):
         params = self._params()
         action = params.get('action')
-        if action in (
-            'store_const', 'store_true', 'store_false', 'append_const', 'version', 'count'
-        ) and 'type' in params:
+        if (
+            action
+            in (
+                'store_const',
+                'store_true',
+                'store_false',
+                'append_const',
+                'version',
+                'count',
+            )
+            and 'type' in params
+        ):
             params.pop('type')
-        if action in ('store_true', 'store_false', 'count', 'version') and 'metavar' in params:
+        if (
+            action in ('store_true', 'store_false', 'count', 'version')
+            and 'metavar' in params
+        ):
             params.pop('metavar')
         logger.log(VERBOSE, f"option: {self.options}")
         logger.log(VERBOSE, f"params: {params}")
@@ -277,6 +303,7 @@ class Opt:
 
 class Arg(Opt):
     """Positional Argument"""
+
     def __init__(self, **kwargs):
         kwargs.update(bool_flag=False)
         super().__init__(**kwargs)

@@ -26,8 +26,10 @@ def test_opt_prefix():
 
 def test_set_options():
     o = Opt()
-    assert o.make_options('a', 'aa', 'aa_bb') == ['-a', '--aa', '--aa-bb']
-    assert o.make_options('a', 'aa', 'aa_bb', prefix='+', repl=('_', '+')) == ['+a', '+aa', '+aa+bb']
+    opts = o.make_options('a', 'aa', 'aa_bb')
+    assert opts == ['-a', '--aa', '--aa-bb']
+    opts = o.make_options('a', 'aa', 'aa_bb', prefix='+', repl=('_', '+'))
+    assert opts == ['+a', '+aa', '+aa+bb']
 
 
 def test_no_options():
@@ -89,7 +91,7 @@ class TestGuessType:
         typ, nargs = o.guess_type_and_nargs(annotation=List[float])
         assert o.type == List[float]
         assert o.constructor is typ is float
-        assert o.nargs is nargs is '*'
+        assert o.nargs == nargs == '*'
 
     def test_with_type(self):
         o = Opt(type=int)
@@ -226,7 +228,12 @@ class TestGuessType:
         assert p.parse_args('-o 5 1 2'.split()).o == [6, 2, 3]
 
     def test_list_from_single_value(self):
-        o = Opt('o', constructor=lambda x: [int(e) + 1 for e in list(x)], nargs='?', default=[-1])
+        o = Opt(
+            'o',
+            constructor=lambda x: [int(e) + 1 for e in list(x)],
+            nargs='?',
+            default=[-1],
+        )
         o.guess_type_and_nargs(annotation=None)
         assert o.type == List[int]
         assert o.constructor('123') == [2, 3, 4]

@@ -28,9 +28,12 @@ def _get_fields(cls: Type[Args]):
     fields_with_value = {
         key: value
         for key, value in cls.__dict__.items()
-        if not key.startswith('_') and not isinstance(value, type)  # skip built-ins and inner classes
+        if not key.startswith('_')
+        and not isinstance(value, type)  # skip built-ins and inner classes
     }
-    fields = {k: None for k in ann if k not in fields_with_value and not k.startswith('_')}
+    fields = {
+        k: None for k in ann if k not in fields_with_value and not k.startswith('_')
+    }
     fields.update(**fields_with_value)
     # get fields from bases classes
     for base in cls.__bases__:
@@ -62,11 +65,7 @@ def _read_args(
 
         if hasattr(value, SUB_COMMAND_MARK):
             sub_commands[key] = _read_args(
-                value.__class__,
-                dest,
-                bool_flag=bool_flag,
-                prefix=prefix,
-                repl=repl,
+                value.__class__, dest, bool_flag=bool_flag, prefix=prefix, repl=repl
             )
             continue
         if isinstance(value, Opt):
@@ -84,7 +83,8 @@ def _read_args(
                 else:
                     raise ValueError(
                         f"invalid value for {key}. "
-                        f"Tuple structure should be: (default, help) or (default, constructor, help)"
+                        f"Tuple structure should be: (default, help) or "
+                        f"(default, constructor, help)"
                     )
             option = Opt(
                 dest=dest,
@@ -151,13 +151,25 @@ def _make_parser(
         parser_kwargs = getattr(args_cls, '__kwargs', {})
         parser_kwargs.setdefault('formatter_class', formatter_class)
 
-        p = _make_parser(_join_names(name, sub_name), args, sub_p, parser=p, formatter_class=formatter_class)
+        p = _make_parser(
+            _join_names(name, sub_name),
+            args,
+            sub_p,
+            parser=p,
+            formatter_class=formatter_class,
+        )
         sub_parser.add_parser(sub_name, parents=[p], add_help=False, **parser_kwargs)
 
     return parser
 
 
-def _set_values(parser_name: str, res: Args, namespace: Namespace, args: List[Opt], sub_commands: dict):
+def _set_values(
+    parser_name: str,
+    res: Args,
+    namespace: Namespace,
+    args: List[Opt],
+    sub_commands: dict,
+):
     """
     Recursively extract attributes from namespace and add them to :attr:`res`.
 
@@ -176,8 +188,9 @@ def _set_values(parser_name: str, res: Args, namespace: Namespace, args: List[Op
         # set values only if sub-command was chosen
         if getattr(namespace, _uwrap(parser_name)) == name:
             sub = getattr(res, name)
-            # Reinitialize instance of sub-command so that nullification of attribute would not touch
-            # original class and inner sub-commands. Mostly useful for tests.
+            # Reinitialize instance of sub-command so that nullification of attribute
+            # would not touch original class and inner sub-commands. Mostly useful for
+            # tests.
             sub = sub.__class__()
             setattr(res, name, sub)
             sub_parser_name = _join_names(parser_name, name)
@@ -253,6 +266,7 @@ def _add_prefixed_key(source: dict, target: dict, prefix: str):
 def _setup_argcomplete(parser, **kwargs):
     try:
         import argcomplete
+
         argcomplete.autocomplete(parser, **kwargs)
     except ImportError:
         logger.debug("Argcomplete is not installed. Skipping integration.")
@@ -275,26 +289,28 @@ def make_parser(
 
     :param args_cls: class with defined arguments
     :param parser: predefined parser
-    :param make_shortcuts: make short version of arguments: ``--abc -> -a``, ``--abc_def -> --ad``
+    :param make_shortcuts: make short version of arguments: ``--abc -> -a``,
+        ``--abc_def -> --ad``
     :param bool_flag:
-        if True then read bool from argument flag: ``--arg`` is True, ``--no-arg`` is False,
-        otherwise check if arg value and truthy or falsy: `--arg 1` is True `--arg no` is False
-    :param prefix: default prefix before options. For ``--``: ``aaa -> --aaa``, ``b -> -b``
+        if True then read bool from argument flag:
+        ``--arg`` is True, ``--no-arg`` is False,
+        otherwise check if arg value and truthy or falsy:
+        `--arg 1` is True `--arg no` is False
+    :param prefix: default prefix before options.
+        For ``--``: ``aaa -> --aaa``, ``b -> -b``
     :param repl: auto-replace some char with another char in option names.
-           For ``('_', '-')``: ``lang_name -> lang-name``
+        For ``('_', '-')``: ``lang_name -> lang-name``
     :param override: override values above on Arg's
     :param parser_kwargs: root parser kwargs
     :param argcomplete_kwargs: argcomplete kwargs
-    :param kwargs: additional params for parser or argcomplete, should be prefixed with target name
-    :return: instance of ArgumentParser and tuple with options (main_options, sub_command_options)
+    :param kwargs: additional params for parser or argcomplete,
+        should be prefixed with target name
+    :return: instance of ArgumentParser and tuple with options
+        (main_options, sub_command_options)
     """
 
     args_cls, args, sub_commands = _read_args(
-        args_cls,
-        override=override,
-        bool_flag=bool_flag,
-        prefix=prefix,
-        repl=repl,
+        args_cls, override=override, bool_flag=bool_flag, prefix=prefix, repl=repl
     )
     if make_shortcuts:
         _make_shortcuts_sub_wise(args, sub_commands)
@@ -310,9 +326,12 @@ def make_parser(
     return parser, (args, sub_commands)
 
 
-def populate_holder(parser: ArgumentParser, args_cls: Type[Args], options: tuple, args=None):
+def populate_holder(
+    parser: ArgumentParser, args_cls: Type[Args], options: tuple, args=None
+):
     """
-    Parse provided string or command line and populate :attr:`args_cls` with parsed values.
+    Parse provided string or command line and populate :attr:`args_cls`
+    with parsed values.
 
     :param parser: generated parser
     :param args_cls: arguments holder
@@ -344,10 +363,12 @@ def parse_args(
     **kwargs,
 ) -> Args:
     """
-    Parse arguments from string or command line and return populated instance of `args_cls`.
+    Parse arguments from string or command line and return populated
+    instance of `args_cls`.
 
     :param args_cls: class with defined arguments
-    :param args: arguments to parse. Either string or list of strings or None (to read from sys.args)
+    :param args: arguments to parse. Either string or list of strings or None
+        (to read from sys.args)
     :param show:
         if 'table' - print arguments as table
         if truthy value - print arguments in one line
@@ -356,11 +377,14 @@ def parse_args(
     :param shorten: shorten long text (eg long default value)
     :param fill: max width of text, wraps long paragraph
     :param tabulate_kwargs: tabulate additional kwargs + some custom fields:
-        cols: number of columns. Can be 'auto' - len(args)/N, int - just number of columns,
+        cols: number of columns. Can be 'auto' - len(args)/N,
+        int - just number of columns,
         'sub' / 'sub-auto' / 'sub-INT' - split by sub-commands,
         gap: string, space between tables/columns
-    :param kwargs: parameters for parser generation. Check out :func:`make_parser` for more params
-    :return: instance of :attr:`args_cls` with populated attributed based of command line arguments.
+    :param kwargs: parameters for parser generation.
+        Check out :func:`make_parser` for more params
+    :return: instance of :attr:`args_cls` with populated attributed based of command
+        line arguments.
 
     >>> class Data:
     ...     a: int
@@ -375,5 +399,12 @@ def parse_args(
     tabulate_kwargs = tabulate_kwargs or {}
     _add_prefixed_key(kwargs, tabulate_kwargs, 'tabulate_')
     if show:
-        print_args(result, variant=show, print_fn=print_fn, shorten=shorten, fill=fill, **tabulate_kwargs)
+        print_args(
+            result,
+            variant=show,
+            print_fn=print_fn,
+            shorten=shorten,
+            fill=fill,
+            **tabulate_kwargs,
+        )
     return result

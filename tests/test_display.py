@@ -117,11 +117,13 @@ class TestTree:
         args = parse_args(Args, '')
 
         t = make_tree(args)
-        r = textwrap.dedent("""
-        Args
-        ├ a = 1
-        └ b = -
-        """).strip()
+        r = textwrap.dedent(
+            """
+            Args
+            ├ a = 1
+            └ b = -
+        """
+        ).strip()
         assert t == r
 
     def test_sub_cmd(self):

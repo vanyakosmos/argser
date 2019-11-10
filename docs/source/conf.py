@@ -24,12 +24,7 @@ master_doc = 'index'
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = [
-    'sphinx.ext.autodoc',
-    'sphinx.ext.doctest',
-    'sphinxcontrib.apidoc',
-    'm2r',
-]
+extensions = ['sphinx.ext.autodoc', 'sphinx.ext.doctest', 'sphinxcontrib.apidoc', 'm2r']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -63,9 +58,6 @@ html_context = {
 
 apidoc_module_dir = str(package_dir)
 apidoc_output_dir = 'modules'
-apidoc_excluded_paths = [
-    'consts.py',
-    'logging.py',
-]
+apidoc_excluded_paths = ['consts.py', 'logging.py']
 apidoc_separate_modules = True
 apidoc_toc_file = False

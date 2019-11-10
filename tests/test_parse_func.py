@@ -24,7 +24,7 @@ def test_decorator():
         assert b == '2'
 
     @argser.call('-a 5 -b "foo bar"')
-    def foo(a=1, b='2'):
+    def bar(a=1, b='2'):
         assert a == 5
         assert b == 'foo bar'
 
