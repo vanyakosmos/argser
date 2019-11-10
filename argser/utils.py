@@ -54,7 +54,6 @@ class colors:
 
 
 def args_to_dict(args: Args) -> dict:
-    res = args.__dict__.copy()
-    if '__namespace__' in res:
-        del res['__namespace__']
-    return res
+    return {
+        key: value for key, value in args.__dict__.items() if not key.startswith('_')
+    }
