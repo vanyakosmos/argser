@@ -1,7 +1,7 @@
 import textwrap
 
 from argser import parse_args, sub_command, Opt
-from argser.display import make_table, make_tree
+from argser.display import make_table, make_tree, stringify
 
 
 def _norm(text: str):
@@ -33,6 +33,49 @@ def test_prints():
 
     parse_args(Args, '', show='tree', shorten=True)
     parse_args(Args, '-a 5 sub', show='tree')
+
+
+class TestStringifier:
+    def test_simple(self):
+        class Args:
+            a = 1
+
+        args = parse_args(Args, '-a 2')
+        assert stringify(args) == 'Args(a=2)'
+        assert str(args) == 'Args(a=2)'
+
+    def test_sub_cmd(self):
+        class Args:
+            a = 1
+
+            class Sub:
+                a = '2'
+
+            sub = sub_command(Sub)
+
+        args = parse_args(Args, '-a 2 sub -a 4')
+        assert stringify(args) == "Args(a=2, sub=Sub(a='4'))"
+        assert str(args) == "Args(a=2, sub=Sub(a='4'))"
+
+    def test_with_custom_str_method(self):
+        class Args:
+            a = 1
+
+            class Sub:
+                a = 2
+
+                def __init__(self, b):
+                    self.b = b
+
+                def __str__(self):
+                    return f"SSS({self.a}-{self.b})"
+
+            sub = sub_command(Sub(42))
+
+        args = parse_args(Args, '-a 2 sub -a 4')
+        assert stringify(args) == 'Args(a=2, sub=Sub(b=42, a=4))'
+        assert str(args) == 'Args(a=2, sub=Sub(b=42, a=4))'
+        assert str(args.sub) == 'SSS(4-42)'
 
 
 def test_wide_table():
@@ -146,6 +189,7 @@ class TestTree:
         args = parse_args(Args, 'sub sub1')
 
         t = make_tree(args)
+        print(t)
         r = textwrap.dedent(
             """
             Args

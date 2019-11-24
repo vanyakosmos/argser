@@ -6,6 +6,7 @@ import pytest
 
 import argser
 from argser import Arg, Opt, parse_args, sub_command
+from argser.exceptions import ArgserException
 from argser.parser import (
     _make_shortcuts_sub_wise as make_shortcuts,
     _read_args as read_args,
@@ -265,7 +266,7 @@ class TestList:
         assert args.d == []
         assert args.e == [1.0]
 
-        args_cls, (a, b, c, d, e), sub_commands = read_args(self.args_cls)
+        args_cls, (a, b, c, d, e), sub_commands = read_args(self.args_cls())
         # a, b, c, d, e = args_as_list(args)
         assert a.nargs == '*'
         assert b.nargs == '*'
@@ -278,17 +279,17 @@ class TestList:
             parse_args(self.args_cls, '-a 1 -e')
 
     def test_types(self):
-        args_cls, (a, b, c, d, e), sub_commands = read_args(self.args_cls)
+        args_cls, (a, b, c, d, e), sub_commands = read_args(self.args_cls())
         assert a.type is list  # because of annotation
-        assert a.constructor is str
+        assert a.factory is str
         assert b.type == List  # ^ same
-        assert b.constructor is str
+        assert b.factory is str
         assert c.type == List[int]
-        assert c.constructor is int
+        assert c.factory is int
         assert d.type == List[bool]
-        assert d.constructor is bool
+        assert d.factory is bool
         assert e.type == List[float]
-        assert e.constructor is float
+        assert e.factory is float
 
 
 def test_non_standard_type():
@@ -509,29 +510,13 @@ def test_prefix():
     assert args.bbb == 42
 
 
-def test_constructor():
-    class Args:
-        a: List[int] = Opt(
-            constructor=lambda x: [int(e) + 1 for e in list(x)], nargs='?', default=[-1]
-        )
-        b: int = Opt(constructor=lambda x: int(x) + 2)
-
-    args = parse_args(Args, '')
-    assert args.a == [-1]
-    assert args.b is None
-
-    args = parse_args(Args, '-a 123 -b 5')
-    assert args.a == [2, 3, 4]
-    assert args.b == 7
-
-
 def test_quick_help():
     class Args:
         # default, help
         a = 1, "help for a"
         # with annotation parenthesis are required
         b: str = (None, "help for b")
-        # default, constructor, help
+        # default, factory, help
         c: float = (5.0, lambda x: float(x) * 2, "help for b")
 
     args = parse_args(Args, '')
@@ -547,47 +532,51 @@ def test_quick_help():
     class Args:
         e = ('foo', str, "help", "some trash no one asked for")
 
-    with pytest.raises(ValueError) as context:
+    with pytest.raises(ArgserException) as context:
         parse_args(Args, '')
-    assert '(default, help) or (default, constructor, help)' in str(context.value)
+    assert '(default, help) or (default, factory, help)' in str(context.value)
 
 
 def test_sub_cmd_with_same_arguments():
-    # use factory because parse_args will remove static sub-cmd attributes from inner classed
-    class Args:
-        a = 1
-        b = 2
+    # use factory because parse_args will remove static sub-cmd attributes from
+    # inner classed
+    def make_args():
+        class Args:
+            a = 1
+            b = 2
 
-        class Sub:
-            a = 3
-            b = 4
+            class Sub:
+                a = 3
+                b = 4
 
-            class Sub2:
-                a = -1
-                b = -2
+                class Sub2:
+                    a = -1
+                    b = -2
 
-            sub = sub_command(Sub2)
+                sub = sub_command(Sub2)
 
-        sub = sub_command(Sub)
+            sub = sub_command(Sub)
 
-    args = parse_args(Args, '')
+        return Args()
+
+    args = parse_args(make_args(), '')
     assert args.a == 1
     assert args.b == 2
     assert args.sub is None
 
-    args = parse_args(Args, 'sub')
+    args = parse_args(make_args(), 'sub')
     assert args.a == 1
     assert args.b == 2
     assert args.sub.a == 3
     assert args.sub.b == 4
 
-    args = parse_args(Args, '-a 5 -b 6 sub -a 7 -b 8')
+    args = parse_args(make_args(), '-a 5 -b 6 sub -a 7 -b 8')
     assert args.a == 5
     assert args.b == 6
     assert args.sub.a == 7
     assert args.sub.b == 8
 
-    args = parse_args(Args, '-a 5 -b 6 sub -a 7 -b 8 sub -a 9 -b 10')
+    args = parse_args(make_args(), '-a 5 -b 6 sub -a 7 -b 8 sub -a 9 -b 10')
     assert args.a == 5
     assert args.b == 6
     assert args.sub.a == 7
@@ -630,13 +619,13 @@ class TestPredefinedParser:
             a = 1
             b = True
 
-        parser, options = argser.make_parser(Args, parser=parser)
+        parser, options = argser.make_parser(Args(), parser=parser)
         args = shlex.split('--foo 100 -a 5 --no-b')
         ns = parser.parse_args(args)
         assert isinstance(ns, Namespace)
         assert ns.foo == 100
 
-        args = argser.populate_holder(parser, Args, options, args)
+        args = argser.populate_holder(Args(), parser, options, args)
         assert args.a == 5
         assert args.b is False
 
@@ -712,7 +701,7 @@ def test_updated_arguments_on_holder():
 
     assert isinstance(Args.dd, Opt)
     assert Args.dd.type == List[int]
-    assert Args.dd.constructor is int
+    assert Args.dd.factory is int
     assert Args.dd.default == [1]
     assert Args.dd.help == 'help dd'
     assert args.dd == [3]
@@ -726,3 +715,134 @@ def test_updated_arguments_on_holder():
     assert Args.f.type is str
     assert Args.f.default is None
     assert args.f == 'foo'
+
+
+class TestFactory:
+    def test_simple(self):
+        def make_cls():
+            class Args:
+                a = 1
+
+                def read_a(self, x: str):
+                    return int(x) + 1
+
+            return Args
+
+        args = parse_args(make_cls(), '')
+        assert args.a == 1
+
+        args = parse_args(make_cls(), '-a 5')
+        assert args.a == 6
+
+    def test_string(self):
+        def make_cls():
+            class Args:
+                a = Opt(default=1, factory='read_b')
+
+                def read_b(self, x: str):
+                    return int(x) + 1
+
+            return Args
+
+        args = parse_args(make_cls(), '')
+        assert args.a == 1
+
+        args = parse_args(make_cls(), '-a 5')
+        assert args.a == 6
+
+    def test_invalid_string(self):
+        class Args:
+            a = Opt(default=1, factory='read_A')
+
+            def read_a(self, x: str):
+                return int(x) + 1
+
+        with pytest.raises(ArgserException):
+            parse_args(Args, '')
+
+    def test_function(self):
+        def make_cls():
+            def read_a(x: str):
+                return int(x) + 1
+
+            class Args:
+                a = Opt(default=1, factory=read_a)
+
+            return Args
+
+        args = parse_args(make_cls(), '')
+        assert args.a == 1
+
+        args = parse_args(make_cls(), '-a 5')
+        assert args.a == 6
+
+    def test_lambdas(self):
+        class Args:
+            a: List[int] = Opt(
+                factory=lambda x: [int(e) + 1 for e in list(x)], nargs='?', default=[-1]
+            )
+            b: int = Opt(factory=lambda x: int(x) + 2)
+
+        args = parse_args(Args, '')
+        assert args.a == [-1]
+        assert args.b is None
+
+        args = parse_args(Args, '-a 123 -b 5')
+        assert args.a == [2, 3, 4]
+        assert args.b == 7
+
+
+class TestInstanceOfArgs:
+    def test_factory(self):
+        class Args:
+            a = 1
+
+            def read_a(self, x: str):
+                assert self  # should be available
+                return int(x) + 1
+
+        parse_args(Args, '-a 2')
+
+    def test_instance(self):
+        class Args:
+            a = 1
+
+        original = Args()
+        args = parse_args(original, '-a 2')
+        assert args is original
+        assert original.a == 2
+
+    def test_initialized(self):
+        def make_args(*a, **kw):
+            class Args:
+                a = 1
+
+                def __init__(self, b):
+                    self.b = b
+
+                def read_a(self, x):
+                    return int(x) + self.b
+
+            return Args(*a, **kw)
+
+        args = parse_args(make_args(1), '-a 2')
+        assert args.a == 3
+
+        args = parse_args(make_args(2), '-a 40')
+        assert args.a == 42
+
+    def test_sub_cmd(self):
+        class Sub:
+            def __init__(self, a):
+                self.a = a
+
+        class Args:
+            a = 1
+
+            sub = sub_command(Sub(4))
+
+            def read_a(self, x):
+                return int(x) + self.sub.a
+
+        args = parse_args(Args, '-a 38')
+        assert args.a == 42

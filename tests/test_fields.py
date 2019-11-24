@@ -4,6 +4,7 @@ from typing import List
 import pytest
 
 from argser import Opt
+from argser.exceptions import ArgserException
 
 
 def test_opt_replace():
@@ -78,149 +79,149 @@ class TestGuessType:
         o = Opt()
         typ, nargs = o.guess_type_and_nargs(annotation=None)
         assert o.type is typ is str
-        assert o.constructor is str
+        assert o.factory is str
         assert o.nargs is nargs is None
 
         o = Opt()
         typ, nargs = o.guess_type_and_nargs(annotation=int)
         assert o.type is typ is int
-        assert o.constructor is int
+        assert o.factory is int
         assert o.nargs is nargs is None
 
         o = Opt()
         typ, nargs = o.guess_type_and_nargs(annotation=List[float])
         assert o.type == List[float]
-        assert o.constructor is typ is float
+        assert o.factory is typ is float
         assert o.nargs == nargs == '*'
 
     def test_with_type(self):
         o = Opt(type=int)
         o.guess_type_and_nargs(annotation=None)
         assert o.type is int
-        assert o.constructor is int
+        assert o.factory is int
         assert o.nargs is None
 
         o = Opt(type=List[int])
         o.guess_type_and_nargs(annotation=None)
         assert o.type is List[int]
-        assert o.constructor is int
+        assert o.factory is int
         assert o.nargs == '*'
 
         o = Opt(type=List[int])
         o.guess_type_and_nargs(annotation=int)  # try override type with annotation
         assert o.type is List[int]  # but fail miserably
-        assert o.constructor is int
+        assert o.factory is int
         assert o.nargs is None
 
     def test_with_default(self):
         o = Opt(default=1)
         o.guess_type_and_nargs(annotation=None)
         assert o.type is int
-        assert o.constructor is int
+        assert o.factory is int
         assert o.nargs is None
 
         o = Opt(default=1)
         o.guess_type_and_nargs(annotation=float)
         assert o.type is float
-        assert o.constructor is float
+        assert o.factory is float
         assert o.nargs is None
 
         o = Opt(default=[])
         o.guess_type_and_nargs(annotation=None)
         assert o.type == List[str]
-        assert o.constructor is str
+        assert o.factory is str
         assert o.nargs == '*'
 
         o = Opt(default=[])
         o.guess_type_and_nargs(annotation=List[bool])
         assert o.type == List[bool]
-        assert o.constructor is bool
+        assert o.factory is bool
         assert o.nargs == '*'
 
         o = Opt(default=[1.1])
         o.guess_type_and_nargs(annotation=None)
         assert o.type == List[float]
-        assert o.constructor is float
+        assert o.factory is float
         assert o.nargs == '+'
 
-    def test_with_constructor(self):
-        o = Opt(constructor=lambda x: x.upper())
+    def test_with_factory(self):
+        o = Opt(factory=lambda x: x.upper())
         o.guess_type_and_nargs(annotation=None)
         assert o.type is str
-        assert o.constructor('a') == 'A'
+        assert o.factory('a') == 'A'
         assert o.nargs is None
 
-        # user error: type and constructor result mismatch
-        o = Opt(constructor=lambda x: x.upper())
+        # user error: type and factory result mismatch
+        o = Opt(factory=lambda x: x.upper())
         o.guess_type_and_nargs(annotation=int)
         assert o.type is int
-        assert o.constructor('a') == 'A'
+        assert o.factory('a') == 'A'
         assert o.nargs is None
 
-        o = Opt(constructor=lambda x: float(x) + 2.2)
+        o = Opt(factory=lambda x: float(x) + 2.2)
         o.guess_type_and_nargs(annotation=float)
         assert o.type is float
-        assert o.constructor('1.1') == pytest.approx(3.3)
+        assert o.factory('1.1') == pytest.approx(3.3)
         assert o.nargs is None
 
-        o = Opt(constructor=lambda x: list(map(int, x)))
+        o = Opt(factory=lambda x: list(map(int, x)))
         o.guess_type_and_nargs(annotation=List[int])
         assert o.type is List[int]
-        assert o.constructor('123') == [1, 2, 3]
+        assert o.factory('123') == [1, 2, 3]
         assert o.nargs == '*'
 
     def test_with_nargs(self):
         o = Opt(nargs='?')
         o.guess_type_and_nargs(annotation=None)
         assert o.type is str
-        assert o.constructor is str
+        assert o.factory is str
         assert o.nargs == '?'
 
         o = Opt(nargs='*')
         o.guess_type_and_nargs(annotation=None)
         assert o.type == List[str]
-        assert o.constructor is str
+        assert o.factory is str
         assert o.nargs == '*'
 
         o = Opt(nargs='+')
         o.guess_type_and_nargs(annotation=None)
         assert o.type == List[str]
-        assert o.constructor is str
+        assert o.factory is str
         assert o.nargs == '+'
 
         o = Opt(nargs=2)
         o.guess_type_and_nargs(annotation=None)
         assert o.type == List[str]
-        assert o.constructor is str
+        assert o.factory is str
         assert o.nargs == 2
 
     def test_complex(self):
-        o = Opt(type=str, constructor=lambda x: x.upper())
+        o = Opt(type=str, factory=lambda x: x.upper())
         o.guess_type_and_nargs(annotation=None)
         assert o.type is str
-        assert o.constructor('a') == 'A'
+        assert o.factory('a') == 'A'
         assert o.nargs is None
 
-        o = Opt(default=1.1, constructor=lambda x: float(x) + 1)
+        o = Opt(default=1.1, factory=lambda x: float(x) + 1)
         o.guess_type_and_nargs(annotation=None)
         assert o.type is float
-        assert o.constructor('1.1') == pytest.approx(2.1)
+        assert o.factory('1.1') == pytest.approx(2.1)
         assert o.nargs is None
 
-        o = Opt('o', type=bool, constructor=lambda x: x == 'foo')
+        o = Opt('o', type=bool, factory=lambda x: x == 'foo')
         o.guess_type_and_nargs(annotation=None)
         assert o.type is bool
-        assert o.constructor('foo') is True
+        assert o.factory('foo') is True
         assert o.nargs is None
         p = ArgumentParser()
         o.inject(p)
         assert p.parse_args('-o foo'.split()).o is True
         assert p.parse_args('-o bar'.split()).o is False
 
-        o = Opt('o', default=[1, 2], constructor=lambda x: int(x) + 1)
+        o = Opt('o', default=[1, 2], factory=lambda x: int(x) + 1)
         o.guess_type_and_nargs(annotation=None)
         assert o.type == List[int]
-        assert o.constructor('1') == 2
+        assert o.factory('1') == 2
         assert o.nargs == '+'
         p = ArgumentParser()
         o.inject(p)
@@ -230,28 +231,28 @@ class TestGuessType:
     def test_list_from_single_value(self):
         o = Opt(
             'o',
-            constructor=lambda x: [int(e) + 1 for e in list(x)],
+            factory=lambda x: [int(e) + 1 for e in list(x)],
             nargs='?',
             default=[-1],
         )
         o.guess_type_and_nargs(annotation=None)
         assert o.type == List[int]
-        assert o.constructor('123') == [2, 3, 4]
+        assert o.factory('123') == [2, 3, 4]
         assert o.nargs == '?'
         p = ArgumentParser()
         o.inject(p)
         assert p.parse_args('-o 123'.split()).o == [2, 3, 4]
 
 
-def test_pick_constructor():
+def test_pick_factory():
     def foo():
         pass
 
-    assert Opt()._pick_constructor(1, 2, foo) is foo
-    assert Opt()._pick_constructor(1, foo, 2) is foo
-    assert Opt()._pick_constructor(None) is None
-    with pytest.raises(ValueError):
-        Opt()._pick_constructor(1, 2, 3)
+    assert Opt()._pick_factory(1, 2, foo) is foo
+    assert Opt()._pick_factory(1, foo, 2) is foo
+    assert Opt()._pick_factory(None) is None
+    with pytest.raises(ArgserException):
+        Opt()._pick_factory(1, 2, 3)
 
 
 def test_pretty_format():

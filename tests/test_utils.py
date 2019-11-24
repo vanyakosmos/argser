@@ -26,9 +26,9 @@ def test_cli():
 
 
 class TestHelpFormatting:
-    def compare(self, args_cls, help_text: str):
-        args_cls, args, sub_commands = _read_args(args_cls)
-        parser = _make_parser('root', args, sub_commands, prog='prog')
+    def compare(self, args, help_text: str):
+        args, options, sub_commands = _read_args(args)
+        parser = _make_parser('root', options, sub_commands, prog='prog')
         help_msg = parser.format_help()
         print(help_msg)
         real_help = textwrap.dedent(help_text)
@@ -44,7 +44,7 @@ class TestHelpFormatting:
             sub = sub_command(Sub, help='sub help')
 
         self.compare(
-            Args,
+            Args(),
             """
             usage: prog [-h] a {sub} ...
 
@@ -68,7 +68,7 @@ class TestHelpFormatting:
         # sometime python3.6 behave strangely and miss inner type in List
         try:
             self.compare(
-                Args,
+                Args(),
                 """
                 usage: prog [-h] [--l0 [L [L ...]]] [--l1 L [L ...]] [--l2 [L [L ...]]] [--ap A]
 
@@ -82,7 +82,7 @@ class TestHelpFormatting:
             )
         except AssertionError:
             self.compare(
-                Args,
+                Args(),
                 """
                 usage: prog [-h] [--l0 [L [L ...]]] [--l1 L [L ...]] [--l2 [L [L ...]]] [--ap A]
 
@@ -104,7 +104,7 @@ class TestHelpFormatting:
             b1 = True
 
         self.compare(
-            Args,
+            Args(),
             """
             usage: prog [-h] [-b] [--no-b] [--b1] [--no-b1] [--bb] [--no-bb]
 
@@ -130,7 +130,7 @@ class TestHelpFormatting:
             sub = sub_command(Sub, help='sub1 help')
 
         self.compare(
-            Args,
+            Args(),
             """
             usage: prog [-h] [-a A] {sub} ...
 
@@ -152,7 +152,7 @@ class TestHelpFormatting:
             ap: list = Opt(action='append')
 
         self.compare(
-            Args,
+            Args(),
             """
             usage: prog [-h] [-v] [--v1] [--v2] [--ap A]
 
@@ -175,7 +175,7 @@ class TestHelpFormatting:
             foo_bar_baaaaaaaaz = 3
 
         self.compare(
-            Args,
+            Args(),
             """
             usage: prog [-h] [-b] [--no-b] [--b1] [--no-b1] [-f F] [-c N] [--dddd D] [--foo-bar-baaaaaaaaz F]
 

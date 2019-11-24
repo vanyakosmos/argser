@@ -11,7 +11,7 @@ from argser.utils import colors, vlen, args_to_dict
 def stringify(args: Args, shorten=False):
     pairs = []
     for key, value in args_to_dict(args).items():
-        if hasattr(value.__class__, SUB_COMMAND_MARK):
+        if hasattr(value, SUB_COMMAND_MARK):
             value = stringify(value, shorten)
         else:
             value = _format_value(value, shorten, fill=False)
@@ -25,7 +25,7 @@ def stringify(args: Args, shorten=False):
 def _get_table(args: Args):
     data = []
     for key, value in args_to_dict(args).items():
-        if hasattr(value.__class__, SUB_COMMAND_MARK):
+        if hasattr(value, SUB_COMMAND_MARK):
             sub_data = _get_table(value)
             data.extend([(f"{key}__{k}", v) for k, v in sub_data])
         else:
@@ -155,7 +155,7 @@ def make_tree(args: Args, shorten=False, fill=40, indent=''):
         field = colors.green(field)
         p = '└' if i == len(data) - 1 else '├'
 
-        if hasattr(value.__class__, SUB_COMMAND_MARK):
+        if hasattr(value, SUB_COMMAND_MARK):
             value = make_tree(value, shorten=shorten, fill=fill, indent=indent + '  ')
             parts.append(f"{indent}{p} {field} = {value}")
             continue

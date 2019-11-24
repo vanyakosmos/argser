@@ -5,6 +5,12 @@ Versions follow [Semantic Versioning](https://semver.org) (`<major>.<minor>.<pat
 **But**. Currently project is in alpha stage (`0.0.*`) and any changes can potentially break existing code.
 
 
+## Unpublished
+
+- rename Opt param ``constructor`` to ``factory``
+- read factory functions from Args class
+
+
 ## 0.0.12
 
 ### Features
