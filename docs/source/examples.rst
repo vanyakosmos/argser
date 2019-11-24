@@ -162,28 +162,6 @@ argparse params
     >>> assert args.c == [1, 2]
 
 
-factories
----------
-
-.. doctest::
-
-    >>> from argser import Opt
-
-    >>> def make_a(a: str):
-    ...     return int(a) + 42
-
-    >>> def make_b(b: str):
-    ...     return b + '42'
-
-    >>> class Args:
-    ...     a: int = Opt(factory=make_a)
-    ...     b = 'default', make_b, "help message for be"
-
-    >>> args = parse_args(Args, '-a 2 -b "foo"')
-    >>> assert args.a == 44
-    >>> assert args.b == "foo42"
-
-
 Actions
 *******
 
@@ -430,6 +408,46 @@ After parsing each attribute of parsed class will be replaced with populated ins
     >>> assert Args.b.type is int
     >>> assert Args.b.help == "help for a"
     >>> assert args.b == 2
+
+
+Arguments factory
+*****************
+
+From callable:
+
+.. doctest::
+
+  >>> def read_a(value: str):
+  ...     return int(value) + 1
+
+  >>> class Args:
+  ...     a = Opt(default=1, factory=read_a)
+
+  >>> parse_args(Args, '-a 2').a
+  3
+
+
+From method:
+
+.. doctest::
+
+  >>> class Args:
+  ...     a = 1
+  ...     def read_a(self, value: str):
+  ...         return int(value) + 1
+
+  >>> parse_args(Args, '-a 2').a
+  3
+
+From method with different name:
+
+  >>> class Args:
+  ...     a = Opt(default=1, factory='get_a')
+  ...     def get_a(self, value: str):
+  ...         return int(value) + 1
+
+  >>> parse_args(Args, '-a 2').a
+  3
 
 
 Auto completion
