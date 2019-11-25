@@ -44,7 +44,7 @@ all = ["tabulate", "argcomplete"]
 argser = "argser.__main__:main"
 
 [tool.black]
-line-length = 88
+line-length = 100
 skip-string-normalization = true
 target-version = ['py37']
 include = '\.pyi?$'

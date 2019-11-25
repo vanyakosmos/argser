@@ -35,9 +35,7 @@ def _get_fields(cls: Type[Args]):
         and not isinstance(value, type)  # skip built-ins and inner classes
         and not callable(value)
     }
-    fields = {
-        k: None for k in ann if k not in fields_with_value and not k.startswith('_')
-    }
+    fields = {k: None for k in ann if k not in fields_with_value and not k.startswith('_')}
     fields.update(**fields_with_value)
     # get fields from bases classes
     for base in cls.__bases__:
@@ -74,12 +72,7 @@ def _set_factory_from_class_method(
 
 
 def _read_args(
-    args: Args,
-    parser_name='root',
-    override=False,
-    bool_flag=True,
-    prefix='--',
-    repl=('_', '-'),
+    args: Args, parser_name='root', override=False, bool_flag=True, prefix='--', repl=('_', '-'),
 ) -> Tuple[Args, List[Opt], Dict[str, tuple]]:
     options = []
     sub_commands = {}
@@ -188,11 +181,7 @@ def _make_parser(
         parser_kwargs.setdefault('formatter_class', formatter_class)
 
         p = _make_parser(
-            _join_names(name, sub_name),
-            args,
-            sub_p,
-            parser=p,
-            formatter_class=formatter_class,
+            _join_names(name, sub_name), args, sub_p, parser=p, formatter_class=formatter_class,
         )
         sub_parser.add_parser(sub_name, parents=[p], add_help=False, **parser_kwargs)
 
@@ -200,11 +189,7 @@ def _make_parser(
 
 
 def _set_values(
-    parser_name: str,
-    res: Args,
-    namespace: Namespace,
-    args: List[Opt],
-    sub_commands: dict,
+    parser_name: str, res: Args, namespace: Namespace, args: List[Opt], sub_commands: dict,
 ):
     """
     Recursively extract attributes from namespace and add them to :attr:`res`.
@@ -440,11 +425,6 @@ def parse_args(
     _add_prefixed_key(kwargs, tabulate_kwargs, 'tabulate_')
     if show:
         print_args(
-            result,
-            variant=show,
-            print_fn=print_fn,
-            shorten=shorten,
-            fill=fill,
-            **tabulate_kwargs,
+            result, variant=show, print_fn=print_fn, shorten=shorten, fill=fill, **tabulate_kwargs,
         )
     return result

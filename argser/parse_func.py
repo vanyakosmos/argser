@@ -119,9 +119,7 @@ class SubCommands:
         return dec
 
     def parse(self, *parser_args, **parser_kwargs):
-        Args = type(
-            'Args', (), {name: sub_cmd for name, sub_cmd in self.commands.items()}
-        )
+        Args = type('Args', (), {name: sub_cmd for name, sub_cmd in self.commands.items()})
         args = parse_args(Args, *parser_args, **parser_kwargs)
         for name in self.commands:
             sub_args = getattr(args, name, None)

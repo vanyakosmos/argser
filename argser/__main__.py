@@ -6,9 +6,7 @@ from typing import List
 
 import argser
 
-argcomplete_desc = (
-    "Add auto completion for scripts. Ex: eval \"$(python -m argser auto foo.py)\""
-)
+argcomplete_desc = "Add auto completion for scripts. Ex: eval \"$(python -m argser auto foo.py)\""
 
 
 class AutoArgs:
@@ -22,9 +20,7 @@ class AutoArgs:
     use_defaults = True
     complete_arguments = argser.Opt(nargs=argparse.REMAINDER)
     shell: str = argser.Opt(choices=('bash', 'tcsh', 'fish'), default='bash')
-    mark: bool = argser.Opt(
-        default=True, help="Add only scripts with PYTHON_ARGCOMPLETE_OK mark."
-    )
+    mark: bool = argser.Opt(default=True, help="Add only scripts with PYTHON_ARGCOMPLETE_OK mark.")
 
 
 def _find_scripts(path: str, mark=True):
@@ -72,11 +68,7 @@ def autocomplete(args: AutoArgs):
         return
 
     # noinspection PyTypeChecker
-    print(
-        argcomplete.shellcode(
-            exs, args.use_defaults, args.shell, args.complete_arguments
-        )
-    )
+    print(argcomplete.shellcode(exs, args.use_defaults, args.shell, args.complete_arguments))
 
     print("added autocompletion to files (if you ran this with eval):", file=sys.stderr)
     for file in exs:
@@ -84,9 +76,7 @@ def autocomplete(args: AutoArgs):
 
 
 class Args:
-    auto = argser.sub_command(
-        AutoArgs, help=argcomplete_desc, description=argcomplete_desc
-    )
+    auto = argser.sub_command(AutoArgs, help=argcomplete_desc, description=argcomplete_desc)
     version = argser.Opt(action='version', version=f'%(prog)s {argser.__version__}')
 
 

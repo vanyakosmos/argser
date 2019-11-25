@@ -227,9 +227,7 @@ class Opt:
             nargs = None
         self.nargs = self.nargs or nargs
         # user specified type -> annotation -> guessed type
-        self.type = (
-            self.type or annotation or self._restore_type(typ, self.nargs, self.default)
-        )
+        self.type = self.type or annotation or self._restore_type(typ, self.nargs, self.default)
         self.factory = self._pick_factory(self.factory, typ)
         return typ, nargs
 
@@ -268,21 +266,11 @@ class Opt:
         action = params.get('action')
         if (
             action
-            in (
-                'store_const',
-                'store_true',
-                'store_false',
-                'append_const',
-                'version',
-                'count',
-            )
+            in ('store_const', 'store_true', 'store_false', 'append_const', 'version', 'count',)
             and 'type' in params
         ):
             params.pop('type')
-        if (
-            action in ('store_true', 'store_false', 'count', 'version')
-            and 'metavar' in params
-        ):
+        if action in ('store_true', 'store_false', 'count', 'version') and 'metavar' in params:
             params.pop('metavar')
         logger.log(VERBOSE, f"option: {self.options}")
         logger.log(VERBOSE, f"params: {params}")

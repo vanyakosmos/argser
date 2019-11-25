@@ -111,13 +111,7 @@ def _format_value(value, shorten=False, fill=40):
 
 
 def make_table(
-    args: Args,
-    preset=None,
-    cols='sub-auto',
-    gap='   ',
-    shorten=False,
-    fill=40,
-    **kwargs,
+    args: Args, preset=None, cols='sub-auto', gap='   ', shorten=False, fill=40, **kwargs,
 ):
     from tabulate import tabulate
 
@@ -175,9 +169,7 @@ def make_tree(args: Args, shorten=False, fill=40, indent=''):
     return '\n'.join(parts)
 
 
-def print_args(
-    args: Args, variant=None, print_fn=None, shorten=False, fill=40, **kwargs
-):
+def print_args(args: Args, variant=None, print_fn=None, shorten=False, fill=40, **kwargs):
     """
     Pretty print out data from :attr:`args`.
 
