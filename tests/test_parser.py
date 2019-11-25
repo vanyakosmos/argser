@@ -14,27 +14,48 @@ from argser.parser import (
 from argser.utils import args_to_dict
 
 
-def test_simple():
+@pytest.mark.parametrize(
+    "args, a, bb, ccc_ddd, e",
+    [
+        ('', None, 'foo', [1.1, 2.2], []),
+        (
+            '-a 2 --bb "foo bar" --ccc-ddd 3.3 4.4 -e 1 0',
+            2,
+            'foo bar',
+            [3.3, 4.4],
+            [True, False],
+        ),
+    ],
+)
+def test_simple(args, a, bb, ccc_ddd, e):
     class Args:
         a: int
         bb = 'foo'
         ccc_ddd = [1.1, 2.2]
         e: List[bool] = []
 
-    args = parse_args(Args, '')
-    assert args.a is None
-    assert args.bb == 'foo'
-    assert args.ccc_ddd == [1.1, 2.2]
-    assert args.e == []
-
-    args = parse_args(Args, '-a 2 --bb "foo bar" --ccc-ddd 3.3 4.4 -e 1 0')
-    assert args.a == 2
-    assert args.bb == 'foo bar'
-    assert args.ccc_ddd == [3.3, 4.4]
-    assert args.e == [True, False]
+    args = parse_args(Args, args)
+    assert args.a == a
+    assert args.bb == bb
+    assert args.ccc_ddd == ccc_ddd
+    assert args.e == e
 
 
-def test_sub_command():
+@pytest.mark.parametrize(
+    "args, a, bb, ccc_ddd, sub_d, sub_ee",
+    [
+        ('', None, 'foo', [1.1, 2.2], None, None),
+        (
+            '-a 1 --bb "foo bar" sub -d 1 2 --ee baz',
+            1,
+            'foo bar',
+            [1.1, 2.2],
+            [1, 2],
+            'baz',
+        ),
+    ],
+)
+def test_sub_command(args, a, bb, ccc_ddd, sub_d, sub_ee):
     class Args:
         a: int
         bb = 'foo'
@@ -46,69 +67,71 @@ def test_sub_command():
 
         sub = sub_command(SubArgs)
 
-    args = parse_args(Args, '')
-    assert args.a is None
-    assert args.bb == 'foo'
-    assert args.ccc_ddd == [1.1, 2.2]
-    assert args.sub is None
-
-    args = parse_args(Args, '-a 1 --bb "foo bar" sub -d 1 2 --ee baz')
-    assert args.a == 1
-    assert args.bb == 'foo bar'
-    assert args.ccc_ddd == [1.1, 2.2]
-    assert args.sub.d == [1, 2]
-    assert args.sub.ee == 'baz'
+    args = parse_args(Args, args)
+    assert args.a == a
+    assert args.bb == bb
+    assert args.ccc_ddd == ccc_ddd
+    if sub_d and sub_ee:
+        assert args.sub.d == sub_d
+        assert args.sub.ee == sub_ee
+    else:
+        assert args.sub is None
 
 
-def test_complex_args():
+@pytest.mark.parametrize(
+    "args, a, bb, ccc_ddd, e",
+    [
+        ('', None, 'foo', [1.1, 2.2], [True]),
+        (
+            '-a 2 --bb "foo bar" --ccc-ddd 3.3 4.4 -e 1 0',
+            2,
+            'foo bar',
+            [3.3, 4.4],
+            [True, False],
+        ),
+    ],
+)
+def test_complex_args(args, a, bb, ccc_ddd, e):
     class Args:
         a: int = Opt(metavar='AA')
         bb: str = Opt(default='foo')
         ccc_ddd: List[float] = Opt(default=[1.1, 2.2])
         e: List[bool] = Opt(default=[True])
 
-    args = parse_args(Args, '')
-    assert args.a is None
-    assert args.bb == 'foo'
-    assert args.ccc_ddd == [1.1, 2.2]
-    assert args.e == [True]
-
-    args = parse_args(Args, '-a 2 --bb "foo bar" --ccc-ddd 3.3 4.4 -e 1 0')
-    assert args.a == 2
-    assert args.bb == 'foo bar'
-    assert args.ccc_ddd == [3.3, 4.4]
-    assert args.e == [True, False]
+    args = parse_args(Args, args)
+    assert args.a == a
+    assert args.bb == bb
+    assert args.ccc_ddd == ccc_ddd
+    assert args.e == e
 
 
-def test_nargs():
-    class Args:
-        a: str = Opt()
-        # b = Opt(nargs=0)  # can't be used with default action
-        c = Opt(nargs=1)
-        d = Opt(nargs=3)
-        e = Opt(nargs='?')
-        f = Opt(nargs='*', required=True)
-        g = Opt(nargs='+', required=True)
+class TestNargs:
+    @pytest.fixture()
+    def args_cls(self):
+        class Args:
+            a: str = Opt()
+            # b = Opt(nargs=0)  # can't be used with default action
+            c = Opt(nargs=1)
+            d = Opt(nargs=3)
+            e = Opt(nargs='?')
+            f = Opt(nargs='*', required=True)
+            g = Opt(nargs='+', required=True)
 
-    with pytest.raises(SystemExit):
-        parse_args(Args, '')  # g is required
+        return Args
 
-    with pytest.raises(SystemExit):
-        parse_args(Args, '-f 1')  # g is required
+    @pytest.mark.parametrize("args", ['', '-f 1', '-g 1 -c 1 2', '-g 1 -d 1 2 3 4'])
+    def test_error(self, args_cls, args):
+        with pytest.raises(SystemExit):
+            parse_args(args_cls, args)
 
-    with pytest.raises(SystemExit):
-        parse_args(Args, '-g 1 -c 1 2')
-
-    with pytest.raises(SystemExit):
-        parse_args(Args, '-g 1 -d 1 2 3 4')
-
-    args = parse_args(Args, '-a 1 -c 2 -d 3 4 5 -e 6 -f -g 9 10')
-    assert args.a == '1'
-    assert args.c == ['2']
-    assert args.d == ['3', '4', '5']
-    assert args.e == '6'
-    assert args.f == []
-    assert args.g == ['9', '10']
+    def test_ok(self, args_cls):
+        args = parse_args(args_cls, '-a 1 -c 2 -d 3 4 5 -e 6 -f -g 9 10')
+        assert args.a == '1'
+        assert args.c == ['2']
+        assert args.d == ['3', '4', '5']
+        assert args.e == '6'
+        assert args.f == []
+        assert args.g == ['9', '10']
 
 
 def test_positional_args():
@@ -138,24 +161,24 @@ def test_argcomplete_integration():
     assert args.c == "foo bar"
 
 
-def test_parse_str():
+@pytest.mark.parametrize(
+    "args, a, b, c",
+    [
+        ('', None, 'b', None),
+        ('-a 1 -b 2 -c 3', '1', '2', '3'),
+        ('-a "foo bar"', 'foo bar', 'b', None),
+    ],
+)
+def test_parse_str(args, a, b, c):
     class Args:
         a: str
         b = 'b'
         c = None
 
-    args = parse_args(Args, '')
-    assert args.a is None
-    assert args.b == 'b'
-    assert args.c is None
-
-    args = parse_args(Args, '-a 1 -b 2 -c 3')
-    assert args.a == '1'
-    assert args.b == '2'
-    assert args.c == '3'
-
-    args = parse_args(Args, '-a "foo bar"')
-    assert args.a == 'foo bar'
+    args = parse_args(Args, args)
+    assert args.a == a
+    assert args.b == b
+    assert args.c == c
 
 
 def test_parse_int():
@@ -193,7 +216,7 @@ def test_parse_float():
 
 
 class TestBooleans:
-    @property
+    @pytest.fixture()
     def args_cls(self):
         class Args:
             a: bool
@@ -203,31 +226,38 @@ class TestBooleans:
 
         return Args
 
-    def test_default(self):
-        args = parse_args(self.args_cls, [])
+    def test_default(self, args_cls):
+        args = parse_args(args_cls, [])
         assert args.a is None
         assert args.b is True
         assert args.c is False
 
-    def test_bool_flag_true(self):
-        args = parse_args(self.args_cls, '-a', bool_flag=True)
-        assert args.a is True
-        args = parse_args(self.args_cls, '--no-a', bool_flag=True)
-        assert args.a is False
-        args = parse_args(self.args_cls, '-no-a', bool_flag=True, prefix='-')
-        assert args.a is False
-        args = parse_args(self.args_cls, '-no-b -c', bool_flag=True, prefix='-')
-        assert args.b is False
-        assert args.c is True
+    @pytest.mark.parametrize(
+        "args, prefix, a, b, c, d",
+        [
+            ('', '--', None, True, False, [True, False]),
+            ('-a', '--', True, True, False, [True, False]),
+            ('--no-a', '--', False, True, False, [True, False]),
+            ('-no-a', '-', False, True, False, [True, False]),
+            ('-no-b -c', '-', None, False, True, [True, False]),
+            ('-d 1 1', '--', None, True, False, [True, True]),
+        ],
+    )
+    def test_bool_flag_true(self, args_cls, args, prefix, a, b, c, d):
+        args = parse_args(args_cls, args, bool_flag=True, prefix=prefix)
+        assert args.a == a
+        assert args.b == b
+        assert args.c == c
+        assert args.d == d
 
-    def test_bool_flag_false(self):
-        args = parse_args(self.args_cls, '-a 1 -b false -c yes', bool_flag=False)
+    def test_bool_flag_false(self, args_cls):
+        args = parse_args(args_cls, '-a 1 -b false -c yes', bool_flag=False)
         assert args.a is True
         assert args.b is False
         assert args.c is True
 
         with pytest.raises(SystemExit):
-            parse_args(self.args_cls, '-a a', bool_flag=False)
+            parse_args(args_cls, '-a a', bool_flag=False)
 
 
 class TestList:
@@ -718,37 +748,38 @@ def test_updated_arguments_on_holder():
 
 
 class TestFactory:
-    def test_simple(self):
-        def make_cls():
-            class Args:
-                a = 1
+    @pytest.mark.parametrize("args, value", [('', 1), ('-a 5', 6)])
+    def test_simple(self, args, value):
+        class Args:
+            a = 1
 
-                def read_a(self, x: str):
-                    return int(x) + 1
+            def read_a(self, x: str):
+                return int(x) + 1
 
-            return Args
+        args = parse_args(Args, args)
+        assert args.a == value
 
-        args = parse_args(make_cls(), '')
-        assert args.a == 1
+    @pytest.mark.parametrize("args, value", [('', 1), ('-a 5', 6)])
+    def test_string(self, args, value):
+        class Args:
+            a = Opt(default=1, factory='read_b')
 
-        args = parse_args(make_cls(), '-a 5')
-        assert args.a == 6
+            def read_b(self, x: str):
+                return int(x) + 1
 
-    def test_string(self):
-        def make_cls():
-            class Args:
-                a = Opt(default=1, factory='read_b')
+        args = parse_args(Args, args)
+        assert args.a == value
 
-                def read_b(self, x: str):
-                    return int(x) + 1
+    @pytest.mark.parametrize("args, value", [('', 1), ('-a 5', 6)])
+    def test_function(self, args, value):
+        def read_a(x: str):
+            return int(x) + 1
 
-            return Args
+        class Args:
+            a = Opt(default=1, factory=read_a)
 
-        args = parse_args(make_cls(), '')
-        assert args.a == 1
-
-        args = parse_args(make_cls(), '-a 5')
-        assert args.a == 6
+        args = parse_args(Args, args)
+        assert args.a == value
 
     def test_invalid_string(self):
         class Args:
@@ -760,36 +791,19 @@ class TestFactory:
         with pytest.raises(ArgserException):
             parse_args(Args, '')
 
-    def test_function(self):
-        def make_cls():
-            def read_a(x: str):
-                return int(x) + 1
-
-            class Args:
-                a = Opt(default=1, factory=read_a)
-
-            return Args
-
-        args = parse_args(make_cls(), '')
-        assert args.a == 1
-
-        args = parse_args(make_cls(), '-a 5')
-        assert args.a == 6
-
-    def test_lambdas(self):
+    @pytest.mark.parametrize(
+        "args, a, b", [('', [-1], None), ('-a 123 -b 5', [2, 3, 4], 7)]
+    )
+    def test_lambdas(self, args, a, b):
         class Args:
             a: List[int] = Opt(
                 factory=lambda x: [int(e) + 1 for e in list(x)], nargs='?', default=[-1]
             )
             b: int = Opt(factory=lambda x: int(x) + 2)
 
-        args = parse_args(Args, '')
-        assert args.a == [-1]
-        assert args.b is None
-
-        args = parse_args(Args, '-a 123 -b 5')
-        assert args.a == [2, 3, 4]
-        assert args.b == 7
+        args = parse_args(Args, args)
+        assert args.a == a
+        assert args.b == b
 
 
 class TestInstanceOfArgs:
@@ -812,24 +826,19 @@ class TestInstanceOfArgs:
         assert args is original
         assert original.a == 2
 
-    def test_initialized(self):
-        def make_args(*a, **kw):
-            class Args:
-                a = 1
+    @pytest.mark.parametrize("args, b, a", [('-a 2', 1, 3), ('-a 40', 2, 42)])
+    def test_initialized(self, args, a, b):
+        class Args:
+            a = 1
 
-                def __init__(self, b):
-                    self.b = b
+            def __init__(self, b):
+                self.b = b
 
-                def read_a(self, x):
-                    return int(x) + self.b
+            def read_a(self, x):
+                return int(x) + self.b
 
-            return Args(*a, **kw)
-
-        args = parse_args(make_args(1), '-a 2')
-        assert args.a == 3
-
-        args = parse_args(make_args(2), '-a 40')
-        assert args.a == 42
+        args = parse_args(Args(b), args)
+        assert args.a == a
 
     def test_sub_cmd(self):
         class Sub:

@@ -1,17 +1,19 @@
 import textwrap
 from typing import List
 
-from argser import Opt, sub_command, Arg
-from argser.parser import _read_args, _make_parser
+import pytest
+
+from argser import Arg, Opt, sub_command
+from argser.parser import _make_parser, _read_args
 from argser.utils import is_list_like_type
 
 
-def test_is_list_typing():
-    assert is_list_like_type(List)
-    assert is_list_like_type(List[str])
-    assert is_list_like_type(List[int])
-    assert not is_list_like_type(list)
-    assert not is_list_like_type(str)
+@pytest.mark.parametrize(
+    "typ, expected",
+    [(List, True), (List[str], True), (List[int], True), (list, False), (str, False)],
+)
+def test_is_list_typing(typ, expected):
+    assert is_list_like_type(typ) is expected
 
 
 def test_cli():

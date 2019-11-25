@@ -1,7 +1,11 @@
+import operator
 import textwrap
 
-from argser import parse_args, sub_command, Opt
+import pytest
+
+from argser import Opt, parse_args, sub_command
 from argser.display import make_table, make_tree, stringify
+from tests.utils import params
 
 
 def _norm(text: str):
@@ -9,7 +13,18 @@ def _norm(text: str):
     return '\n'.join([line.rstrip() for line in text.splitlines()])
 
 
-def test_prints():
+@pytest.mark.parametrize(
+    "p",
+    [
+        params('', show=True),
+        params('', show=True, shorten=True),
+        params('', show='table', shorten=True),
+        params('-a 5 sub', show='table', tabulate_preset='fancy'),
+        params('', show='tree', shorten=True),
+        params('-a 5 sub', show='tree'),
+    ],
+)
+def test_prints(p):
     class Args:
         n: str
         a = '1'
@@ -24,15 +39,7 @@ def test_prints():
 
         sub = sub_command(Sub)
 
-    # just check that they run without errors
-    parse_args(Args, '', show=True, shorten=True)
-    parse_args(Args, '', show=True)
-
-    parse_args(Args, '', show='table', shorten=True)
-    parse_args(Args, '-a 5 sub', show='table', tabulate_preset='fancy')
-
-    parse_args(Args, '', show='tree', shorten=True)
-    parse_args(Args, '-a 5 sub', show='tree')
+    parse_args(Args, *p.args, **p.kwargs)
 
 
 class TestStringifier:
@@ -78,7 +85,8 @@ class TestStringifier:
         assert str(args.sub) == 'SSS(4-42)'
 
 
-def test_wide_table():
+@pytest.fixture()
+def args_class_with_subs():
     class Args:
         a1 = None
         a2 = 1
@@ -108,20 +116,12 @@ def test_wide_table():
 
         sub = sub_command(Sub)
 
-    args = parse_args(Args, 'sub sub2')
-    table = make_table(args, cols=None)
-    assert len(table.splitlines()[0]) < 40
+    return Args
 
-    table = make_table(args, cols='auto')
-    assert len(table.splitlines()[0]) > 40
 
-    table = make_table(args, cols=1)
-    assert len(table.splitlines()[0]) < 40
-
+def test_table_output(args_class_with_subs):
+    args = parse_args(args_class_with_subs, 'sub sub2')
     table = make_table(args, cols=3)
-    assert len(table.splitlines()[0]) > 40
-
-    # be careful with trailing spaces after sub__a5 [1, 2]
     print(table)
     result = textwrap.dedent(
         """
@@ -138,17 +138,24 @@ def test_wide_table():
     )
     assert _norm(table) == _norm(result)
 
-    table = make_table(args, cols='sub')
-    assert len(table.splitlines()[0]) > 40
 
-    table = make_table(args, cols='sub-auto')
-    assert len(table.splitlines()[0]) > 40
-
-    table = make_table(args, cols='sub-3')
-    assert len(table.splitlines()[0]) > 40
-
-    table = make_table(args, preset='fancy')
-    assert len(table.splitlines()[0]) > 40
+@pytest.mark.parametrize(
+    "make_table_kwargs,op,width",
+    [
+        (dict(cols=None), operator.lt, 40),
+        (dict(cols='auto'), operator.gt, 40),
+        (dict(cols=1), operator.lt, 40),
+        (dict(cols=3), operator.gt, 40),
+        (dict(cols='sub'), operator.gt, 40),
+        (dict(cols='sub-auto'), operator.gt, 40),
+        (dict(cols='sub-3'), operator.gt, 40),
+        (dict(preset='fancy'), operator.gt, 40),
+    ],
+)
+def test_wide_table(args_class_with_subs, make_table_kwargs, op, width):
+    args = parse_args(args_class_with_subs, 'sub sub2')
+    table = make_table(args, **make_table_kwargs)
+    assert op(len(table.splitlines()[0]), width)
 
 
 class TestTree:

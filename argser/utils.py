@@ -41,7 +41,11 @@ def str2bool(v: str):
 def is_list_like_type(t):
     """Check if provided type is List or List[str] or similar."""
     orig = getattr(t, '__origin__', None)
-    return list in getattr(t, '__orig_bases__', []) or orig and issubclass(list, orig)
+    return (
+        list in getattr(t, '__orig_bases__', [])
+        or bool(orig)
+        and issubclass(list, orig)
+    )
 
 
 class colors:
