@@ -104,18 +104,24 @@ class SubCommands:
         self.commands = {}
         self.functions = {}
 
-    def _add(self, func: FunctionType, **kwargs):
-        self.commands[func.__name__] = sub_command(make_args_cls(func), **kwargs)
-        self.functions[func.__name__] = func
+    def _add(self, func: FunctionType, name: str, **kwargs):
+        self.commands[name] = sub_command(make_args_cls(func), **kwargs)
+        self.functions[name] = func
 
-    def add(self, func=None, **kwargs):
-        """Use as ``@subs.add`` or ``@subs.add(...params...)``"""
+    def add(self, func=None, name=None, **kwargs):
+        """
+        Use as ``@subs.add`` or ``@subs.add(...params...)``.
+
+        ``name`` is alternative name of the sub command. Default is ``func.__name__``
+        """
         if isinstance(func, FunctionType):
-            self._add(func, **kwargs)
+            if name is None:
+                name = func.__name__
+            self._add(func, name, **kwargs)
             return func
 
         def dec(f):
-            self.add(f, **kwargs)
+            self.add(f, name, **kwargs)
             return f
 
         return dec

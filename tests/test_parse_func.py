@@ -60,3 +60,13 @@ def test_can_call_function_after_wrap():
 
     assert sub.parse('func2 -a 2 -b a') == '2a'
     assert func2(2, 'a') == '2a'
+
+
+def test_alternative_sub_cmd_name():
+    sub = SubCommands()
+
+    @sub.add(name='foo')
+    def func(a=1):
+        return a + 1
+
+    assert sub.parse('foo -a 2') == 3
