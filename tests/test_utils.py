@@ -4,8 +4,8 @@ from typing import List
 import pytest
 
 from argser import Arg, Opt, sub_command
-from argser.parser import _make_parser, _read_args
-from argser.utils import is_list_like_type
+from argser.parser import _make_parser, _read_args, parse_args
+from argser.utils import is_list_like_type, with_args
 
 
 @pytest.mark.parametrize(
@@ -193,3 +193,21 @@ class TestHelpFormatting:
                 --foo-bar-baaaaaaaaz F  int, default: 3
             """,
         )
+
+
+def test_with_args():
+    class Args:
+        b = 10
+
+    def func(a, b=1, c=2):
+        return a + b + c
+
+    args = parse_args(Args, '')
+    with pytest.raises(TypeError):
+        with_args(func, args)  # positional argument 'a' is not specified
+
+    assert with_args(func, args, 1) == 13
+    assert with_args(func, args, a=1) == 13
+    assert with_args(func, args, 1, c=5) == 16
+    assert with_args(func, args, 1, b=0) == 3
+    assert with_args(func, args, 2, b=2, c=2) == 6

@@ -55,3 +55,9 @@ class colors:
 
 def args_to_dict(args: Args) -> dict:
     return {key: value for key, value in args.__dict__.items() if not key.startswith('_')}
+
+
+def with_args(func, options, *args, **kwargs):
+    data = args_to_dict(options)
+    data.update(kwargs)
+    return func(*args, **data)
