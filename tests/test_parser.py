@@ -18,13 +18,7 @@ from argser.utils import args_to_dict
     "args, a, bb, ccc_ddd, e",
     [
         ('', None, 'foo', [1.1, 2.2], []),
-        (
-            '-a 2 --bb "foo bar" --ccc-ddd 3.3 4.4 -e 1 0',
-            2,
-            'foo bar',
-            [3.3, 4.4],
-            [True, False],
-        ),
+        ('-a 2 --bb "foo bar" --ccc-ddd 3.3 4.4 -e 1 0', 2, 'foo bar', [3.3, 4.4], [True, False]),
     ],
 )
 def test_simple(args, a, bb, ccc_ddd, e):
@@ -45,14 +39,7 @@ def test_simple(args, a, bb, ccc_ddd, e):
     "args, a, bb, ccc_ddd, sub_d, sub_ee",
     [
         ('', None, 'foo', [1.1, 2.2], None, None),
-        (
-            '-a 1 --bb "foo bar" sub -d 1 2 --ee baz',
-            1,
-            'foo bar',
-            [1.1, 2.2],
-            [1, 2],
-            'baz',
-        ),
+        ('-a 1 --bb "foo bar" sub -d 1 2 --ee baz', 1, 'foo bar', [1.1, 2.2], [1, 2], 'baz',),
     ],
 )
 def test_sub_command(args, a, bb, ccc_ddd, sub_d, sub_ee):
@@ -82,13 +69,7 @@ def test_sub_command(args, a, bb, ccc_ddd, sub_d, sub_ee):
     "args, a, bb, ccc_ddd, e",
     [
         ('', None, 'foo', [1.1, 2.2], [True]),
-        (
-            '-a 2 --bb "foo bar" --ccc-ddd 3.3 4.4 -e 1 0',
-            2,
-            'foo bar',
-            [3.3, 4.4],
-            [True, False],
-        ),
+        ('-a 2 --bb "foo bar" --ccc-ddd 3.3 4.4 -e 1 0', 2, 'foo bar', [3.3, 4.4], [True, False],),
     ],
 )
 def test_complex_args(args, a, bb, ccc_ddd, e):
@@ -476,9 +457,7 @@ def test_make_shortcuts():
     def comp_names(opt: Opt, *names):
         return set(opt.option_names) == set(names)
 
-    make_shortcuts(
-        [a, aa, bc, ab_cd, ab_cde, bcd, f1, f2_3], {'sub': (None, [aaa, ab_cd2], {})}
-    )
+    make_shortcuts([a, aa, bc, ab_cd, ab_cde, bcd, f1, f2_3], {'sub': (None, [aaa, ab_cd2], {})})
     assert a.dest == 'a' and comp_names(a, 'a')  # already short name
     assert aa.dest == 'aa' and comp_names(aa, 'aa')  # name 'a' already exists
     assert bc.dest == 'bc' and comp_names(bc, 'b', 'bc')
@@ -791,9 +770,7 @@ class TestFactory:
         with pytest.raises(ArgserException):
             parse_args(Args, '')
 
-    @pytest.mark.parametrize(
-        "args, a, b", [('', [-1], None), ('-a 123 -b 5', [2, 3, 4], 7)]
-    )
+    @pytest.mark.parametrize("args, a, b", [('', [-1], None), ('-a 123 -b 5', [2, 3, 4], 7)])
     def test_lambdas(self, args, a, b):
         class Args:
             a: List[int] = Opt(

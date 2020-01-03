@@ -159,9 +159,7 @@ class TestGuessType:
             (lambda x: list(map(int, x)), List[int], List[int], '*', '123', [1, 2, 3]),
         ],
     )
-    def test_with_factory(
-        self, factory, annotation, opt_type, opt_nargs, value, expected
-    ):
+    def test_with_factory(self, factory, annotation, opt_type, opt_nargs, value, expected):
         o = Opt(factory=factory)
         o.guess_type_and_nargs(annotation=annotation)
         assert o.type == opt_type
@@ -209,12 +207,7 @@ class TestGuessType:
     # fmt: on
 
     def test_list_from_single_value(self):
-        o = Opt(
-            'o',
-            factory=lambda x: [int(e) + 1 for e in list(x)],
-            nargs='?',
-            default=[-1],
-        )
+        o = Opt('o', factory=lambda x: [int(e) + 1 for e in list(x)], nargs='?', default=[-1])
         o.guess_type_and_nargs(annotation=None)
         assert o.type == List[int]
         assert o.factory('123') == [2, 3, 4]

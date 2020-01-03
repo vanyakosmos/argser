@@ -42,3 +42,21 @@ def test_group():
 
     assert subs.parse('foo') == 'foo'
     assert subs.parse('bar 1 2') == ['1', 2]
+
+
+def test_can_call_function_after_wrap():
+    sub = SubCommands()
+
+    @sub.add
+    def func1(a=1, b=''):
+        return str(a) + b
+
+    assert sub.parse('func1 -a 2 -b a') == '2a'
+    assert func1(2, 'a') == '2a'
+
+    @sub.add()
+    def func2(a=1, b=''):
+        return str(a) + b
+
+    assert sub.parse('func2 -a 2 -b a') == '2a'
+    assert func2(2, 'a') == '2a'

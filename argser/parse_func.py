@@ -25,7 +25,7 @@ def _make_argument(name, annotations: dict, defaults: dict):
     return arg
 
 
-def _make_args_cls(func: FunctionType):
+def make_args_cls(func: FunctionType):
     ann = func.__annotations__
     args = func.__code__.co_varnames
     # arguments excluding *args, **kwargs and kw only args
@@ -36,7 +36,7 @@ def _make_args_cls(func: FunctionType):
 
 
 def _call(func: FunctionType, *parser_args, **parser_kwargs):
-    Args = _make_args_cls(func)
+    Args = make_args_cls(func)
     parser_kwargs.setdefault('parser_prog', func.__name__)
     args = parse_args(Args, *parser_args, **parser_kwargs)
     data = args_to_dict(args)
@@ -105,16 +105,18 @@ class SubCommands:
         self.functions = {}
 
     def _add(self, func: FunctionType, **kwargs):
-        self.commands[func.__name__] = sub_command(_make_args_cls(func), **kwargs)
+        self.commands[func.__name__] = sub_command(make_args_cls(func), **kwargs)
         self.functions[func.__name__] = func
 
     def add(self, func=None, **kwargs):
         """Use as ``@subs.add`` or ``@subs.add(...params...)``"""
         if isinstance(func, FunctionType):
-            return self._add(func, **kwargs)
+            self._add(func, **kwargs)
+            return func
 
         def dec(f):
-            return self._add(f, **kwargs)
+            self.add(f, **kwargs)
+            return f
 
         return dec
 
