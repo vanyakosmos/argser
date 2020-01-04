@@ -165,7 +165,8 @@ def _make_parser(
     """
     logger.log(VERBOSE, f"parser {name}:\n - {args}\n - {sub_commands}\n - {parser}")
     parser = parser or ArgumentParser(formatter_class=formatter_class, **kwargs)
-    parser.prefix_chars = ''.join({a.prefix for a in args})  # get all possible prefixes
+    if args:
+        parser.prefix_chars = ''.join({a.prefix for a in args})  # get all possible prefixes
 
     for arg in args:
         arg.inject(parser)
@@ -299,7 +300,7 @@ def _setup_argcomplete(parser, **kwargs):
 
 
 def make_parser(
-    args: ArgsObj,
+    args: Args,
     parser=None,
     make_shortcuts=True,
     bool_flag=True,

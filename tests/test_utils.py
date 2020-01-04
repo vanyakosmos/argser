@@ -194,6 +194,17 @@ class TestHelpFormatting:
             """,
         )
 
+    def test_with_sub_cmd_only(self):
+        class Args:
+            class Foo:
+                pass
+
+            foo = sub_command(Foo)
+
+        with pytest.raises(SystemExit) as e:
+            parse_args(Args, '-h')
+        assert e.value.args[0] == 0  # status 0 == ok
+
 
 def test_with_args():
     class Args:
