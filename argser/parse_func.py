@@ -1,10 +1,13 @@
 import inspect
-
 from types import FunctionType
 
+from argser.docstring import parse_docstring
 from argser.fields import Arg, Opt
 from argser.parser import parse_args, sub_command
 from argser.utils import args_to_dict
+
+
+NOTSET = object()
 
 
 def _get_default_args(func):
@@ -16,22 +19,36 @@ def _get_default_args(func):
     }
 
 
-def _make_argument(name, annotations: dict, defaults: dict):
-    if name in defaults:
-        arg = Opt(default=defaults[name])
+def _make_argument(name, annotation, default, **kwargs):
+    if default is NOTSET:
+        arg = Arg(**kwargs)
     else:
-        arg = Arg()
-    arg.guess_type_and_nargs(annotations.get(name))
+        arg = Opt(default=default, **kwargs)
+    arg.guess_type_and_nargs(annotation)
     return arg
 
 
 def make_args_cls(func: FunctionType):
+    docs = parse_docstring(func.__doc__)
     ann = func.__annotations__
     args = func.__code__.co_varnames
     # arguments excluding *args, **kwargs and kw only args
     args = args[: func.__code__.co_argcount]
     defaults = _get_default_args(func)
-    Args = type('Args', (), {arg: _make_argument(arg, ann, defaults) for arg in args})
+    Args = type(
+        'Args',
+        (),
+        {
+            arg: _make_argument(
+                arg,
+                annotation=ann.get(arg),
+                default=defaults.get(arg, NOTSET),
+                help=docs['params'].get(arg),
+            )
+            for arg in args
+        },
+    )
+    Args.__doc__ = docs['description']
     return Args
 
 
@@ -92,6 +109,9 @@ class SubCommands:
 
     >>> @subs.add
     ... def bar(a, b: int):
+    ...     \"""
+    ...     :param a: help text far a
+    ...     \"""
     ...     return [a, b]
 
     >>> subs.parse('foo')

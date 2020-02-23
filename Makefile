@@ -12,7 +12,10 @@ format: clean
 	@black argser/ tests/
 
 test:
-	@pytest --cov=argser --no-cov-on-fail --cov-report html --cov-report term-missing -q
+	@pytest -vv
+
+testcov:
+	@pytest -vv --cov=argser --no-cov-on-fail --cov-report html --cov-report term-missing -q
 
 docs:
 	@make -C docs clean

@@ -180,9 +180,14 @@ def _make_parser(
         p = getattr(args_ins, '__parser', None)
         parser_kwargs = getattr(args_ins, '__kwargs', {})
         parser_kwargs.setdefault('formatter_class', formatter_class)
+        parser_kwargs.setdefault('description', args_ins.__doc__)
 
         p = _make_parser(
-            _join_names(name, sub_name), args, sub_p, parser=p, formatter_class=formatter_class,
+            name=_join_names(name, sub_name),
+            args=args,
+            sub_commands=sub_p,
+            parser=p,
+            formatter_class=formatter_class,
         )
         sub_parser.add_parser(sub_name, parents=[p], add_help=False, **parser_kwargs)
 
@@ -345,6 +350,7 @@ def make_parser(
     parser_kwargs = parser_kwargs or {}
     _add_prefixed_key(kwargs, parser_kwargs, 'parser_')
     parser_kwargs.setdefault('formatter_class', ColoredHelpFormatter)
+    parser_kwargs.setdefault('description', args_ins.__doc__)
     parser = _make_parser('root', options, sub_commands, parser=parser, **parser_kwargs)
     # argcomplete
     argcomplete_kwargs = argcomplete_kwargs or {}
