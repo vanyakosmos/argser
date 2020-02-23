@@ -7,6 +7,9 @@ Versions follow [Semantic Versioning](https://semver.org) (`<major>.<minor>.<pat
 
 ## Unpublished
 
+
+## 0.0.16
+
 - read arguments description from docstring
 
 

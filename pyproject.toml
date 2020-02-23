@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "argser"
-version = "0.0.15"
+version = "0.0.16"
 description = "Arguments parsing without boilerplate."
 authors = ["Bachynin Ivan <bachynin.i@gmail.com>"]
 license = "MIT"
